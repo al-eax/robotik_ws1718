@@ -5,4 +5,6 @@ for folder in */ ; do
 	cd $folder;
 	catkin build;
 	cd .. 
-done
+done 
+source ../devel/setup.bash
+
