@@ -1,0 +1,8 @@
+#https://gist.github.com/dlaz/3840652
+catkin_ws/build/
+catkin_ws/devel/
+catkin_ws/src/*/build/
+catkin_ws/src/*/logs/
+catkin_ws/src/*/.catkin_tools/
+catkin_ws/src/*/devel/
+*cpp
