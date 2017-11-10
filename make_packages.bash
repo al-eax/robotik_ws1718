@@ -6,5 +6,6 @@ for folder in */ ; do
 	catkin build;
 	cd .. 
 done 
-source ../devel/setup.bash
-
+cd ..
+catkin_make
+source devel/setup.bash
