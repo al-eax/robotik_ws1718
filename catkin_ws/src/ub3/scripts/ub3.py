@@ -19,7 +19,8 @@ signal.signal(signal.SIGINT, signal_handler)
 def init():
     global bridge
     rospy.init_node('foo', anonymous=True)
-    rospy.Subscriber("/app/camera/color/image_raw",Image,cameraRawCallback)#subscribe to cars camera
+    #/app/camera/rgb/image_color 104
+    rospy.Subscriber("/app/camera/rgb/image_color",Image,cameraRawCallback)#subscribe to cars camera
     bridge = CvBridge() #create a opencv <->ros bridge to convert images
 
 
@@ -41,7 +42,7 @@ def calcVR_VT(cv_bin_image):
 
     distortion_params = np.array([[k1],[k2],[t1],[t2]], dtype = "double")
 
-    image_points = np.array(getPoints(cv_binary_image),  dtype = "double")
+    image_points = np.array(getPoints(cv_bin_image),  dtype = "double")
     (retval, rvec, tvec) = cv2.solvePnP(model_points,image_points,camera_matrix,distortion_params)
 
     return (rvec, tvec)
@@ -53,10 +54,10 @@ def cameraRawCallback(data):
     global bridge
     cv_input_image = bridge.imgmsg_to_cv2(data, "bgr8") #convert ros image to opencv image
     cv_gray_image = cv2.cvtColor(cv_input_image, cv2.COLOR_BGR2GRAY) #convert to gray scale
-    _,cv_binary_image = cv2.threshold(cv_gray_image,220,255,cv2.THRESH_BINARY) #binarize image into black and white
+    _, cv_binary_image = cv2.threshold(cv_gray_image,220,255,cv2.THRESH_BINARY) #binarize image into black and white
 
     (r,t) = calcVR_VT(cv_binary_image)
-
+    
     cv2.imwrite("/home/alex/repos/robotik_ws1718/ub3/cam_image_gray.png",cv_gray_image)
     cv2.imwrite("/home/alex/repos/robotik_ws1718/ub3/cam_image_rgb.png",cv_input_image)
     cv2.imwrite("/home/alex/repos/robotik_ws1718/ub3/cam_image_binary.png",cv_binary_image)
@@ -154,14 +155,12 @@ if __name__ == '__main__':
 
         init()
         rospy.spin()
+
         '''
         img = cv2.imread("/home/alex/repos/robotik_ws1718/ub3/cam_image_rgb.png")
         cv_gray_image = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) #convert to gray scale
         _,cv_binary_image = cv2.threshold(cv_gray_image,220,255,cv2.THRESH_BINARY)#+cv2.THRESH_OTSU) #binarize image into black and white
         points = getPoints(cv_binary_image)
         '''
-
-
-
     except rospy.ROSInterruptException:
         pass
