@@ -9,8 +9,6 @@ import math
 
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
-from std_msgs.msg import Int16
-from std_msgs.msg import Float32
 
 # allow user to terminate script with CTRL+C
 def signal_handler(signal, frame):
@@ -59,7 +57,7 @@ def calcVR_VT(cv_bin_image):
     print "white points:" , points
     image_points = np.array(points,  dtype = "double")
 
-    #get
+    #apply solvePnP
     (_, rvec, tvec) = cv2.solvePnP(model_points,image_points,camera_matrix,distortion_params)
     return (rvec, tvec, points)
 
@@ -83,7 +81,7 @@ def processImage(cv_input_image):
     inv_tvec = -inv_rmat * t
 
     print  "inverse of Homogeneous", inv_tvec
-
+    #calculate viewangles
     yaw = math.atan2(inv_rmat[1][0] ,inv_rmat[0][0])
     pitch = math.atan2(-inv_rmat[2][0], math.sqrt(inv_rmat[2][1]**2 + inv_rmat[2][2]**2))
     roll = math.atan2(inv_rmat[2][1], inv_rmat[2][2])
@@ -95,6 +93,7 @@ def processImage(cv_input_image):
     cv2.imwrite("/home/alex/repos/robotik_ws1718/ub3/cam_image_gray.png",cv_gray_image)
     cv2.imwrite("/home/alex/repos/robotik_ws1718/ub3/cam_image_rgb.png",cv_input_image)
     cv2.imwrite("/home/alex/repos/robotik_ws1718/ub3/cam_image_binary.png",cv_binary_image)
+    return (cv_gray_image, cv_binary_image)
 
 #callback function to catch images from cars camera
 def cameraRawCallback(data):
@@ -102,8 +101,8 @@ def cameraRawCallback(data):
     global bridge
     print "got a new image"
     cv_input_image = bridge.imgmsg_to_cv2(data, "bgr8") #convert ros image to opencv image
-    processImage(cv_input_image)
-
+    (cv_gray, cv_bin) = processImage(cv_input_image) #calculate camera matrix
+    pubImages(cv_gray, cv_bin) #publish images
 
 def pubImages(img_gray, img_bin):
     global bridge
@@ -199,9 +198,9 @@ def getPoints(bin_image):
 if __name__ == '__main__':
     try:
 
-        processImage(cv2.imread("/home/alex/repos/robotik_ws1718/ub3/tmp/cam_image_gray.png"))
-        #init()
-        #rospy.spin()
+        #processImage(cv2.imread("/home/alex/repos/robotik_ws1718/ub3/tmp/cam_image_gray.png"))
+        init()
+        rospy.spin()
 
     except rospy.ROSInterruptException:
         pass
