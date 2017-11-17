@@ -19,10 +19,13 @@ def init():
     global pub_grid
     pub_grid = rospy.Publisher("scan_grid", OccupancyGrid, queue_size=100)
     grid = OccupancyGrid()
-    grid.info.width = 100
-    grid.info.height = 100
-    grid.info.origin.position = (50,50,0)
-
+    grid.info.width = 10
+    grid.info.height = 10
+    grid.info.origin.position.x = 5
+    grid.info.origin.position.y = 5
+    grid.info.origin.position.z = 0
+    grid.info.resolution = 0.5
+    grid.data = [UNKNOWN for i in range(grid.info.width*grid.info.height)]
     rospy.init_node('foobar', anonymous=True)
     rospy.Subscriber("/scan", LaserScan, scanCallback, queue_size=100)
 
@@ -35,48 +38,49 @@ def rotate(v,a):
 def f(x,m):
     return x*m
 
-
-
 UNKNOWN = -1
 FREE = 0
 OBST = 100
 
-
 def addValidLidar(a,l):
     global grid
+    #print grid
     e1 = np.array([[1],[0]])
     vec = rotate(e1*l,a)
     m = vec[0] / vec[1] #x/y
     free = []
-    for x in range(ve[0]):
-        y = f(x,m)
-        free.append((x,int(y)))
-        index = conv_2d_1d(x,int(y) , grid.data, grid.info.width)
+    # irgendwo + 50, 50 um in mittelpunkt zu schieben
+    for x in range(vec[0]):
+        y = int(f(x,m) + grid.info.origin.position.x)
+        x += grid.info.origin.position.y
+        free.append((x,y))
+        index = conv_2d_1d(x,y , grid.data, grid.info.width)
         grid.data[index] = FREE
-    grid[v[0],v[1]] = OBST
+
+    index = int(conv_2d_1d(vec[0],vec[1], grid.data, grid.info.width))
+    grid.data[index] = OBST
 
 def pubGrid():
     global grid
     global pub_grid
     pub_grid.publish(grid)
 
-def conv_2d_1d(x,y,data,w,h):
+def conv_2d_1d(x,y,data,w):
     l = len(data)
     return x*l/w + y
 
 def resetGrid():
     global grid
-    grid[:] = UNKNOWN
+    grid.data[:] = UNKNOWN
 
 def scanCallback(data):
     global grid
-    grid = OccupancyGrid()
     rs = data.ranges
-    for i in range(len(rs)):
-        r = rs[i]
+    for a in range(len(rs)): #a = angle
+        r = rs[a] #radius
         if not math.isinf(r):
-            addValidLidar(r)
-
+            addValidLidar(a,r)
+    pubGrid()
 
 if __name__ == '__main__':
     try:
