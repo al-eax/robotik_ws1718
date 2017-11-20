@@ -30,26 +30,11 @@ def setCell(x,y,val):
     grid.data[int(offset) + int(round(y_scaled) - 1)] = val
 
 
-def visualize():
-    global grid
-    line = ""
-    for x in range(grid.info.width):
-        for y in range(grid.info.height):
-            index = conv_2d_1d(x,y,grid.data,grid.info.width)
-            if grid.data[index] == -1:
-                line += "0-1 "
-            if grid.data[index] == -0:
-                line += "000 "
-            if grid.data[index] == 100:
-                line += "100 "
-        line += "\n"
-    print line
-    print "##############################################"
 
 def init():
     global grid
     global pub_grid
-    pub_grid = rospy.Publisher("scan_grid", OccupancyGrid, queue_size=4)
+    pub_grid = rospy.Publisher("scan_grid", OccupancyGrid, queue_size=1)
     grid = OccupancyGrid()
     grid.info.resolution = 1/10.0 # 10 Kaestchen pro M
     grid.info.width = 120 #12m
@@ -58,15 +43,13 @@ def init():
     grid.info.origin.orientation.y = 0
     grid.info.origin.orientation.z = 0
     grid.info.origin.orientation.w = 1
-    grid.info.origin.position.x =  int(-1.0 * grid.info.width / 2.0) * grid.info.resolution
-    grid.info.origin.position.y = int(-1.0 * grid.info.height / 2.0) * grid.info.resolution
-    print grid.info.origin
+    grid.info.origin.position.x = 0
+    grid.info.origin.position.y = 0
     grid.info.origin.position.z = 0.1
-
 
     grid.data = [UNKNOWN for i in range(grid.info.width*grid.info.height)]
     rospy.init_node('foobar', anonymous=True)
-    rospy.Subscriber("/scan", LaserScan, scanCallback, queue_size=3)
+    rospy.Subscriber("/scan", LaserScan, scanCallback, queue_size=1)
 
 #https://scipython.com/book/chapter-6-numpy/examples/creating-a-rotation-matrix-in-numpy/
 def rotate(v,a):
@@ -74,6 +57,65 @@ def rotate(v,a):
     c, s = np.cos(rad), np.sin(rad)
     R = np.matrix('{} {}; {} {}'.format(c, -s, s, c))
     return np.dot(R,v)
+
+
+def get_line(start, end):
+    #http://www.roguebasin.com/index.php?title=Bresenham%27s_Line_Algorithm
+    """Bresenham's Line Algorithm
+    Produces a list of tuples from start and end
+
+    >>> points1 = get_line((0, 0), (3, 4))
+    >>> points2 = get_line((3, 4), (0, 0))
+    >>> assert(set(points1) == set(points2))
+    >>> print points1
+    [(0, 0), (1, 1), (1, 2), (2, 3), (3, 4)]
+    >>> print points2
+    [(3, 4), (2, 3), (1, 2), (1, 1), (0, 0)]
+    """
+    # Setup initial conditions
+    x1, y1 = start
+    x2, y2 = end
+    dx = x2 - x1
+    dy = y2 - y1
+
+    # Determine how steep the line is
+    is_steep = abs(dy) > abs(dx)
+
+    # Rotate line
+    if is_steep:
+        x1, y1 = y1, x1
+        x2, y2 = y2, x2
+
+    # Swap start and end points if necessary and store swap state
+    swapped = False
+    if x1 > x2:
+        x1, x2 = x2, x1
+        y1, y2 = y2, y1
+        swapped = True
+
+    # Recalculate differentials
+    dx = x2 - x1
+    dy = y2 - y1
+
+    # Calculate error
+    error = int(dx / 2.0)
+    ystep = 1 if y1 < y2 else -1
+
+    # Iterate over bounding box generating points between start and end
+    y = y1
+    points = []
+    for x in range(x1, x2 + 1):
+        coord = (y, x) if is_steep else (x, y)
+        points.append(coord)
+        error -= abs(dy)
+        if error < 0:
+            y += ystep
+            error += dx
+
+    # Reverse the list if the coordinates were swapped
+    if swapped:
+        points.reverse()
+    return points
 
 def f(x,m):
     return x*m
@@ -90,18 +132,23 @@ def addValidLidar(a,l):
     #print "fpp",vec
     if vec[1] == 0:
         m = 0
-    else: 
+    else:
         m = vec[1] / vec[0] #y/x = steigung
-    for x in range(vec[0]):
-        y = float(f(x,m))
-        setCell(-x,y,FREE)
-    for y in range(vec[1]):
-        if m == 0:
-            break
-        x = float(f(y,1/m))
-        setCell(-x,y,FREE)
-
-    setCell(-vec[0],vec[1],OBST)
+    '''
+        for x in range(vec[0]):
+            y = float(f(x,m))
+            setCell(x,y,FREE)
+        for y in range(vec[1]):
+            if m == 0:
+                break
+            x = float(f(y,1/m))
+            setCell(x,y,FREE)
+    '''
+    l = get_line((0,0),(int(vec[0] * 100),int(vec[1] * 100)))
+    u = [(x / 100.0, y / 100.0 ) for (x,y) in l]
+    for (x,y) in u:
+        setCell(x,y,FREE)
+    setCell((vec[0]),(vec[1]),OBST)
 
 def setInfWhite(a):
     global grid
@@ -110,15 +157,18 @@ def setInfWhite(a):
     vec = rotate(e1*inf_length, a)
     if vec[1] == 0:
         m = 0
-    else: 
+    else:
         m = vec[1] / vec[0] #x/y = steigung
     for x in range(vec[0]):
         y = float(f(x,m))
-        setCell(-x,y,FREE)
+        #setCell(-x,y,FREE)
     for y in range(vec[1]):
         x = float(f(y,1/m))
-        setCell(-x,y,FREE)
-
+        #setCell(-x,y,FREE)
+    l = get_line((0,0),(int(vec[0] * 100),int(vec[1] * 100)))
+    u = [(x / 100.0, y / 100.0 ) for (x,y) in l]
+    for (x,y) in u:
+        setCell(x,y,FREE)
 
 def pubGrid():
     global grid
@@ -144,7 +194,7 @@ def scanCallback(data):
             #print a,r
             addValidLidar(a,r)
         else:
-            setInfWhite(a)
+            setInfWhite(a,)
     pubGrid()
     #visualize()
 
