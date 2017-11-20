@@ -17,12 +17,16 @@ signal.signal(signal.SIGINT, signal_handler)
 def setCell(x,y,val):
     global grid
     res = grid.info.resolution
+    #x = -x
+    #y = -y
     x_scaled = x * 1.0 / res + grid.info.width / 2.0   # (x * 1.0 / res) + grid.info.width/2.0 #x + grid.info.width / 2.0 #
     y_scaled = y * 1.0 / res + grid.info.height / 2.0   #(y * 1.0 / res) + grid.info.height/2.0 #y + grid.info.height / 2.0  #
 
     if x_scaled >= grid.info.width or x_scaled < 0 or y_scaled >= grid.info.height or y_scaled < 0:
         return
     offset = (int(round(x_scaled)) - 1) * grid.info.height
+    if (grid.data[int(offset) + int(round(y_scaled) - 1)] == OBST):
+        return
     grid.data[int(offset) + int(round(y_scaled) - 1)] = val
 
 
@@ -66,16 +70,17 @@ def init():
 
 #https://scipython.com/book/chapter-6-numpy/examples/creating-a-rotation-matrix-in-numpy/
 def rotate(v,a):
-    c, s = np.cos(a), np.sin(a)
+    rad = (a * np.pi / 180.0) + np.pi / 2
+    c, s = np.cos(rad), np.sin(rad)
     R = np.matrix('{} {}; {} {}'.format(c, -s, s, c))
-    return R*v
+    return np.dot(R,v)
 
 def f(x,m):
     return x*m
 
 UNKNOWN = -1
 FREE = 0
-OBST = 100
+OBST = 100  #obst ist gesund
 
 def addValidLidar(a,l):
     global grid
@@ -84,28 +89,35 @@ def addValidLidar(a,l):
     vec = rotate(e1*l, a)
     #print "fpp",vec
     if vec[1] == 0:
-        return
-    m = vec[0] / vec[1] #x/y = steigung
-    free = []
-    for x in np.arange(-6,6, 0.001):
+        m = 0
+    else: 
+        m = vec[1] / vec[0] #y/x = steigung
+    for x in range(vec[0]):
         y = float(f(x,m))
-        #x += grid.info.origin.position.x
-        #free.append((x,y))
-        #index = conv_2d_1d(x,y , grid.data, grid.info.width)
-        #print x,y
-        #grid.data[in,t(index)] = FREE
-        #print "xy ",x,y
+        setCell(-x,y,FREE)
+    for y in range(vec[1]):
+        if m == 0:
+            break
+        x = float(f(y,1/m))
         setCell(-x,y,FREE)
 
     setCell(-vec[0],vec[1],OBST)
-    setCell(1,1,UNKNOWN)
-    setCell(5,1,OBST)
-    setCell(1,5,OBST)
-    setCell(-5,-5,OBST)
-    #index = int(conv_2d_1d(vec[0],vec[1], grid.data, grid.info.width))
-    #grid.data[index] = OBST
 
-
+def setInfWhite(a):
+    global grid
+    e1 = np.array([[1.0],[0.0]])
+    inf_length = min(grid.info.height, grid.info.width)
+    vec = rotate(e1*inf_length, a)
+    if vec[1] == 0:
+        m = 0
+    else: 
+        m = vec[1] / vec[0] #x/y = steigung
+    for x in range(vec[0]):
+        y = float(f(x,m))
+        setCell(-x,y,FREE)
+    for y in range(vec[1]):
+        x = float(f(y,1/m))
+        setCell(-x,y,FREE)
 
 
 def pubGrid():
@@ -129,8 +141,10 @@ def scanCallback(data):
     for a in range(len(rs)): #a = angle
         r = rs[a] #radius
         if not math.isinf(r) and data.intensities[a] != 0:
-            print a,r
+            #print a,r
             addValidLidar(a,r)
+        else:
+            setInfWhite(a)
     pubGrid()
     #visualize()
 
