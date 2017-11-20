@@ -92,32 +92,43 @@ def addValidLidar(a,l):
         m = 0
     else: 
         m = vec[1] / vec[0] #y/x = steigung
-    for x in range(vec[0]):
+    for x in np.arange(-6.0, 6.0, 0.1):
         y = float(f(x,m))
-        setCell(-x,y,FREE)
-    for y in range(vec[1]):
+        length = math.sqrt(x**2 + y**2)
+        if length < l:      
+            setCell(x,y,FREE)
+            
+    for y in np.arange(-6.0, 6.0, 0.1):
         if m == 0:
             break
         x = float(f(y,1/m))
-        setCell(-x,y,FREE)
-
-    setCell(-vec[0],vec[1],OBST)
+        length = math.sqrt(x**2 + y**2)
+        if length < l:      
+            setCell(x,y,FREE)
+    setCell(vec[0],vec[1],OBST)
 
 def setInfWhite(a):
     global grid
     e1 = np.array([[1.0],[0.0]])
-    inf_length = min(grid.info.height, grid.info.width)
+    inf_length = min(grid.info.height, grid.info.width) / 2
+    inf_length = 6
     vec = rotate(e1*inf_length, a)
     if vec[1] == 0:
         m = 0
     else: 
         m = vec[1] / vec[0] #x/y = steigung
-    for x in range(vec[0]):
+    for x in np.arange(-6.0, 6.0, 0.1):
         y = float(f(x,m))
-        setCell(-x,y,FREE)
-    for y in range(vec[1]):
+        length = math.sqrt(x**2 + y**2)
+        if length < inf_length:      
+            setCell(x,y,FREE)
+    for y in np.arange(-6.0, 6.0, 0.1):
+        if m == 0:
+            break
         x = float(f(y,1/m))
-        setCell(-x,y,FREE)
+        length = math.sqrt(x**2 + y**2)
+        if length < inf_length:      
+            setCell(x,y,FREE)
 
 
 def pubGrid():
@@ -145,6 +156,8 @@ def scanCallback(data):
             addValidLidar(a,r)
         else:
             setInfWhite(a)
+
+    #setCell(1.5,0,FREE)
     pubGrid()
     #visualize()
 
