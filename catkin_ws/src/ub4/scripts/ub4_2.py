@@ -15,17 +15,23 @@ from sensor_msgs.msg import LaserScan
 #set steering angle
 def pubSteering(a):
     pub = rospy.Publisher("/manual_control/steering",Int16,queue_size=10)
-    rospy.sleep(1)
+    rospy.sleep(2)
     msg = Int16()
     msg.data = a
     pub.publish(msg)
 
 angles = [0,30,90,120,150,179]
-current_angle = 0
+current_angle = 3
 
 print_lidar = False
 
+# 0deg :  1.18624997139 1.40125000477
+# 30deg : 1.14999997616 1.30375003815
+# 90deg : 1.14600002766 1.16425001621
+# 120deg :
+
 def measure():
+    #d1 = 1m bis zur hinderen achse
     global print_lidar
     pubSteering(angles[current_angle])
     rospy.sleep(5)
@@ -39,8 +45,8 @@ def scanCallback(data):
     global print_lidar
     #print data
     if print_lidar:
-        print "10:350", data.ranges[10] , data.ranges[350]
-
+        print "a 10:350", data.ranges[10] , data.ranges[350]
+        print_lidar = False
 
 def pubSpeed(i):
     pub = rospy.Publisher('/manual_control/speed', Int16, queue_size=1)
