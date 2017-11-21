@@ -39,7 +39,7 @@ __Map__
 
 
 # 2.
-We made a semi-automatic process to measure the distances `dl2,dr2` for 10° and 250° for each steering angle:
+We made a semi-automatic process to measure the distances `dl2,dr2` for 10° and 350° for each steering angle:
 
 ```py
 angles = [0,30,90,120,150,179]

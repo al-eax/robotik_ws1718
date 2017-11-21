@@ -27,36 +27,42 @@ current_angle = 5
 print_lidar = False
 
 #angle: 0
+# dl1,dr1:
 # 10:350 0.910000026226 0.902000010014
 #Abstand d2 messen
 # dl2 , dr2:
 # 10:350 1.37399995327 1.64900004864
 
 #angle: 30
+# dl1,dr1:
 # 10:350 0.910000026226 0.907999992371
 #Abstand d2 messen
 # dl2 , dr2:
 # 10:350 1.38499999046 1.59399998188
 
 #angle: 90
+# dl1,dr1:
 # 10:350 0.916999995708 0.916000008583
 #Abstand d2 messen
 # dl2 , dr2:
 # 10:350 1.38100004196 1.40299999714
 
 #angle: 120
+# dl1,dr1:
 # 10:350 0.907000005245 0.916000008583
 #Abstand d2 messen
 # dl2 , dr2:
 # 10:350 1.41100001335 1.36600005627
 
 #angle: 150
+# dl1,dr1:
 # 10:350 0.921000003815 0.919000029564
 #Abstand d2 messen
 # dl2 , dr2:
 # 10:350 1.47800004482 1.33299994469
 
 #angle: 179
+# dl1,dr1:
 # 10:350 0.916000008583 0.907000005245
 #Abstand d2 messen
 # dl2 , dr2:
@@ -90,7 +96,6 @@ def create_mapping():
     o2_list = []
     for (dl2, dr2) in d2:
         o2 = theta_o2(dl2,dr2)
-        print o2
         o2_list.append(o2)
     return o2_list
 
@@ -98,7 +103,6 @@ def create_mapping():
 
 def do_map(angle):
     o2 = create_mapping()
-
 
 
 
@@ -112,7 +116,6 @@ def measure():
     pubSpeed(100)
     rospy.sleep(3)
     pubSpeed(0)
-    print "Abstand d2 messen"
     print_lidar = True
     pubSteering(100)
 
@@ -132,7 +135,6 @@ def pubSpeed(i):
 
 
 print create_mapping()
-#rospy.init_node('kjdsfhkdsjfh', anonymous=True)
-#rospy.Subscriber("/scan", LaserScan, scanCallback, queue_size=100)
-#measure()
-#rospy.spin()
+rospy.init_node('kjdsfhkdsjfh', anonymous=True)
+rospy.Subscriber("/scan", LaserScan, scanCallback, queue_size=100)
+rospy.spin()
