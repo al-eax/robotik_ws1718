@@ -4,6 +4,7 @@ import signal
 import sys
 import numpy as np
 import math
+import matplotlib.pyplot as plt
 
 from std_msgs.msg import Int16
 from std_msgs.msg import Float32
@@ -20,6 +21,8 @@ signal.signal(signal.SIGINT, signal_handler)
 KP = 0.6
 CALIBRATED_ZERO_ANGLE = 90
 errors = []
+heading_array = []
+time = 0
 
 def init():
     global steering_pub
@@ -48,8 +51,12 @@ def pubSteering(a):
 def yawCallback(data):
     global ITERATIONS
     global yaw_sub
+    global time
+    global heading_array
+    time += 1
 
     current_yaw = data.data
+    heading_array.append(data.data)
 
     do_PDC(current_yaw, 90)
 
@@ -59,6 +66,14 @@ def yawCallback(data):
         sme = np.sum(errors) / len(errors)
         print "DONE"
         print "mean squared error", sme
+        t = range(time)
+        plt.plot(t, heading_array)
+        plt.xlabel('callback #')
+        plt.ylabel('current yaw')
+        plt.grid(True)
+        plt.show()
+        
+        sys.exit(0)
         
 
 def do_PDC(current_yaw, desired_yaw):
