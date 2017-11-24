@@ -22,7 +22,6 @@ KP = 0.6
 CALIBRATED_ZERO_ANGLE = 90
 errors = []
 heading_array = []
-time = 0
 
 def init():
     global steering_pub
@@ -51,9 +50,7 @@ def pubSteering(a):
 def yawCallback(data):
     global ITERATIONS
     global yaw_sub
-    global time
     global heading_array
-    time += 1
 
     current_yaw = data.data
     heading_array.append(data.data)
@@ -66,7 +63,8 @@ def yawCallback(data):
         sme = np.sum(errors) / len(errors)
         print "DONE"
         print "mean squared error", sme
-        t = range(time)
+        
+        t = range(len(errors))
         plt.plot(t, heading_array)
         plt.xlabel('callback #')
         plt.ylabel('current yaw')
