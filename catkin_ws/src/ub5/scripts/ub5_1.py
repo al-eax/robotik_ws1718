@@ -18,8 +18,8 @@ def signal_handler(signal, frame):
         sys.exit(0)
 signal.signal(signal.SIGINT, signal_handler)
 
-KP = 0.6
-CALIBRATED_ZERO_ANGLE = 90
+KP = 0.5
+CALIBRATED_ZERO_ANGLE = 81
 errors = []
 heading_array = []
 
@@ -55,36 +55,44 @@ def yawCallback(data):
     current_yaw = data.data
     heading_array.append(data.data)
 
-    do_PDC(current_yaw, 90)
+    pubSpeed(-100)
 
-    if len(errors) == 100:
+    do_PDC(current_yaw, 179)
+
+    if len(errors) == 100000:
         yaw_sub.unregister()
         pubSpeed(0)
         sme = np.sum(errors) / len(errors)
         print "DONE"
         print "mean squared error", sme
-        
+
         t = range(len(errors))
         plt.plot(t, heading_array)
         plt.xlabel('callback #')
         plt.ylabel('current yaw')
         plt.grid(True)
         plt.show()
-        
+
         sys.exit(0)
-        
+
 
 def do_PDC(current_yaw, desired_yaw):
     global errors
     u = KP *(desired_yaw - current_yaw) + CALIBRATED_ZERO_ANGLE
     errors.append( (desired_yaw - current_yaw)**2)
     print "(" ,len(errors) , ")" "u = " , KP , " *  (", desired_yaw , " - " , current_yaw , ") + " , CALIBRATED_ZERO_ANGLE , " = " , u
+
+    if u < 0:
+        u = 0
+    if u > 179:
+        u = 179
+
     pubSteering(u)
 
 if __name__ == '__main__':
     try:
         init()
-        pubSpeed(-500)
+        pubSpeed(-100)
         rospy.spin()
     except rospy.ROSInterruptException:
         pass
