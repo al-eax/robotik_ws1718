@@ -15,10 +15,21 @@ from nav_msgs.msg import Odometry
 
 # allow user to terminate script with CTRL+C
 def signal_handler(signal, frame):
-        sys.exit(0)
+
+    sme = np.sum(errors) / len(errors)
+    print "DONE"
+    print "mean squared error", sme
+    t = range(len(errors))
+    plt.plot(t, heading_array)
+    plt.xlabel('callback #')
+    plt.ylabel('yaw')
+    plt.grid(True)
+    plt.show()
+    
+    sys.exit(0)
 signal.signal(signal.SIGINT, signal_handler)
 
-KP = 0.5
+KP = 15
 CALIBRATED_ZERO_ANGLE = 81
 errors = []
 heading_array = []
@@ -55,25 +66,9 @@ def yawCallback(data):
     current_yaw = data.data
     heading_array.append(data.data)
 
-    pubSpeed(-100)
+    pubSpeed(-200)
 
-    do_PDC(current_yaw, 179)
-
-    if len(errors) == 100000:
-        yaw_sub.unregister()
-        pubSpeed(0)
-        sme = np.sum(errors) / len(errors)
-        print "DONE"
-        print "mean squared error", sme
-
-        t = range(len(errors))
-        plt.plot(t, heading_array)
-        plt.xlabel('callback #')
-        plt.ylabel('current yaw')
-        plt.grid(True)
-        plt.show()
-
-        sys.exit(0)
+    do_PDC(current_yaw, 79)
 
 
 def do_PDC(current_yaw, desired_yaw):
