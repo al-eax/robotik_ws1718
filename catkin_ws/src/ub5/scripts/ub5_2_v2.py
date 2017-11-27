@@ -54,9 +54,9 @@ def pubSteering(a):
     msg.data = a
     steering_pub.publish(msg)
 
-KP = 15
-KD = 8
-CALIBRATED_ZERO_ANGLE = 81
+KP = 300
+KD = 100
+CALIBRATED_ZERO_ANGLE = 98
 
 
 def odomCallback(data):
@@ -81,7 +81,7 @@ def do_PDC(current_y, desired_y):
 if __name__ == '__main__':
     try:
         init()
-        pubSpeed(-400)
+        pubSpeed(-150)
         rospy.spin()
     except rospy.ROSInterruptException:
         pass
