@@ -18,8 +18,8 @@ from nav_msgs.msg import Odometry
 def signal_handler(signal, frame):
     odom_sub.unregister()
     plt.plot(t, odomy_arr)
-    plt.xlabel('callback #')
-    plt.ylabel('y')
+    plt.xlabel('time in s')
+    plt.ylabel('distance to y=0.2')
     plt.grid(True)
     plt.show()
     
@@ -54,14 +54,14 @@ def pubSteering(a):
     msg.data = a
     steering_pub.publish(msg)
 
-KP = 0.6
-KD = 0.4
-CALIBRATED_ZERO_ANGLE = 80
+KP = 15
+KD = 8
+CALIBRATED_ZERO_ANGLE = 81
 
 
 def odomCallback(data):
     current_y = data.pose.pose.position.y
-    odomy_arr.append(data.pose.pose.position.y)
+    odomy_arr.append(0.2 - data.pose.pose.position.y)
     t.append(time.time())
     do_PDC(current_y, 0.2)
     
@@ -69,9 +69,10 @@ def odomCallback(data):
 def do_PDC(current_y, desired_y):
     derivative = 0
     if len(odomy_arr) > 2:
-        derivative = (odomy_arr[-1]-odomy_arr[-3]) / (t[-1]-t[-3]) #sub last two elements
+        derivative = (odomy_arr[-1]-odomy_arr[-2]) / (t[-1]-t[-2]) #sub last two elements
 
-    u = KP *(desired_y - current_y) + KD * (0 - derivative) + CALIBRATED_ZERO_ANGLE
+    u = -KP *(desired_y - current_y) - KD * (derivative) + CALIBRATED_ZERO_ANGLE
+    
     print "u=" , KP , "*(", desired_y - current_y , ") ", "+" , KD , "*" , -derivative, "=",u
 
     pubSteering(u)
@@ -80,7 +81,7 @@ def do_PDC(current_y, desired_y):
 if __name__ == '__main__':
     try:
         init()
-        pubSpeed(-500)
+        pubSpeed(-400)
         rospy.spin()
     except rospy.ROSInterruptException:
         pass
