@@ -80,7 +80,7 @@ def phi2(dr2,T):
 def theta_o2(dl2, dr2):
     T = t(dl2,dr2)
     phi = phi2(dr2,T)
-    num = np.sin((phi/dl2))
+    num = np.sin(phi) * dl2     # num = do2
     theta = np.arccos(num/dl2)
     return theta - 10
 
