@@ -26,9 +26,8 @@ This is our plot of the current yaw against the callbacks for the real car with 
 
 ![](t1.png)
 
-After 1234 callbacks we had a mean suared error of `7`. The car starts with a yaw of 70° and oscillates around 79°:
+After 1234 callbacks we had a mean suared error of 7. The car starts with a yaw of 70° and oscillates around 79°:
 ![](t1_error.png)
-
 
 
 ## Control a car on a trajectory via odometry
@@ -53,7 +52,7 @@ Here are two plots we generated with the real car. They show the distance betwee
 finally a plot of the same programm using the gazebo:
 ![](sc_2.png)
 
-Output:
+Some logs:
 ```
 ...
 u= 2.9 *( 0.2 - 0.201403176746 )  + 2.6 * - 0.0153677153998 = 80.9558835035
@@ -80,6 +79,7 @@ phi2 = math.asin(dr2* math.sin(alpha) / t)
 do2 = - math.sin(phi2) * dl2
 ```
 With these three values we tried to calculate the angled `theta` and `theta_stern`:
+
 ```py
 thetal2 = math.asin(do2 / dl2)
 theta = thetal2 - alpha
@@ -87,6 +87,7 @@ cy = do2 + math.sin(theta) * s
 thetaStar = math.atan2(p - cy, l) * 180 / math.pi
 theta = theta * 180 / math.pi - 90
 ```
+
 We got stable values for our `dl2,dr2,do2` but crazy values for `theta,theta_stern`.
 We tried to calculate the PD controller anyway:
 
