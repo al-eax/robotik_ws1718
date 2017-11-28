@@ -16,9 +16,13 @@ from nav_msgs.msg import Odometry
 # allow user to terminate script with CTRL+C
 def signal_handler(signal, frame):
 
+    # when the script is terminated manually do the following
+    # print the mean squared error to the terminal
     sme = np.sum(errors) / len(errors)
     print "DONE"
     print "mean squared error", sme
+    
+    # plot the yaw over time using matplotlib
     t = range(len(errors))
     plt.plot(t, heading_array)
     plt.xlabel('callback #')
@@ -34,6 +38,7 @@ CALIBRATED_ZERO_ANGLE = 81
 errors = []
 heading_array = []
 
+# initialize ros and subscribers and publishers
 def init():
     global steering_pub
     global speed_pub
@@ -58,25 +63,28 @@ def pubSteering(a):
     msg.data = a
     steering_pub.publish(msg)
 
+# callback for the /model_car/yaw topic we subscribed to
 def yawCallback(data):
-    global ITERATIONS
     global yaw_sub
     global heading_array
 
     current_yaw = data.data
+    # append current yaw to an array to plot it later
     heading_array.append(data.data)
 
     pubSpeed(-200)
 
     do_PDC(current_yaw, 79)
 
-
+# here the steering u is calculated using the formula of the lecture
 def do_PDC(current_yaw, desired_yaw):
     global errors
     u = KP *(desired_yaw - current_yaw) + CALIBRATED_ZERO_ANGLE
+    # squared error is saved in an array
     errors.append( (desired_yaw - current_yaw)**2)
     print "(" ,len(errors) , ")" "u = " , KP , " *  (", desired_yaw , " - " , current_yaw , ") + " , CALIBRATED_ZERO_ANGLE , " = " , u
 
+    # set some boundaries
     if u < 0:
         u = 0
     if u > 179:
@@ -87,7 +95,7 @@ def do_PDC(current_yaw, desired_yaw):
 if __name__ == '__main__':
     try:
         init()
-        pubSpeed(-100)
+        pubSpeed(-200)
         rospy.spin()
     except rospy.ROSInterruptException:
         pass

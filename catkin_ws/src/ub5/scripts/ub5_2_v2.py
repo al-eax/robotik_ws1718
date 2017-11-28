@@ -17,6 +17,8 @@ from nav_msgs.msg import Odometry
 # allow user to terminate script with CTRL+C
 def signal_handler(signal, frame):
     odom_sub.unregister()
+    
+    # plot distance to y = 0.2 over time on script cancellation
     plt.plot(t, odomy_arr)
     plt.xlabel('time in s')
     plt.ylabel('distance to y=0.2')
@@ -29,6 +31,7 @@ signal.signal(signal.SIGINT, signal_handler)
 odomy_arr = []
 t = []
 
+# initialize ros and subscribers and publishers
 def init():
     global steering_pub
     global speed_pub
@@ -58,17 +61,20 @@ KP = 300
 KD = 100
 CALIBRATED_ZERO_ANGLE = 98
 
-
+# callback for the /odom topic we subscribed to
 def odomCallback(data):
     current_y = data.pose.pose.position.y
+    # odom array for calculating the derivative and to plot it later
     odomy_arr.append(0.2 - data.pose.pose.position.y)
+    # array of time in seconds with a high resolution to calculate speed and plot it later
     t.append(time.time())
     do_PDC(current_y, 0.2)
     
-
+# PD controller calculation from the lecture
 def do_PDC(current_y, desired_y):
     derivative = 0
     if len(odomy_arr) > 2:
+        # derivative is the derivative over time of the distance to y = 0.2
         derivative = (odomy_arr[-1]-odomy_arr[-2]) / (t[-1]-t[-2]) #sub last two elements
 
     u = -KP *(desired_y - current_y) - KD * (derivative) + CALIBRATED_ZERO_ANGLE
