@@ -9,6 +9,8 @@
 | Sven Heinrichsen | 4780388| s.heinrichsen@fu-berlin.de |
 | Alexander Hinze-Huettl | 4578322 | hinze.alex@gmail.com |
 
+__Repo:__ [https://github.com/al-eax/robotik_ws1718](https://github.com/al-eax/robotik_ws1718)
+
 ## Control a car on a straight lane using a heading sensor
 
 We subscribed to the topic `/model_car/yaw`
@@ -104,3 +106,7 @@ To test this code, we placed an obstecla in the gazebo world:
 ![](rviz_fail.png)
 Here is the plot of the steering angle and the theta angle. You can see the car starting af 160:
 ![](theta_steering_plot.png)
+
+and a short log of our `dl2,dr2,do2,u` and angles:
+
+![](steering_log.png)
