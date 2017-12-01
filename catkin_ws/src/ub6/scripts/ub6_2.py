@@ -29,9 +29,8 @@ mask_yuv = cv2.inRange(img_yuv, lower_gray_yuv, upper_gray_yuv)
 res_yuv = cv2.bitwise_and(img_bgr, img_bgr, mask = mask_yuv)
 
 
-#macht die oberen 20% des Bildes schwarz
+#macht die oberen 20% des Bildes schwarz,
 def cut_image(img):
-    h = img.shape[0]
     w = img.shape[1]
     img[0 : int(0.2 * w) , : ] = 0
     return img
@@ -45,17 +44,18 @@ def do_ransac_on_contur(contur):
     ransac = linear_model.RANSACRegressor()
     X = []
     Y = []
+    #lade Koordinaten aller weissen Pixel in X unY
     for pxl in contur:
         X.append([pxl[0][1]])
         Y.append([pxl[0][0]])
-    ransac.fit(X, Y)
-    b = ransac.estimator_.intercept_
-    m = ransac.estimator_.coef_
+    ransac.fit(X, Y) #build classifier
+    b = ransac.estimator_.intercept_ #schnittpunkt
+    m = ransac.estimator_.coef_ #steigung
     return (b,m)
 
 #make 3 channel to 1 channel images:
 bgr_1_channel = cv2.cvtColor(res_bgr, cv2.COLOR_BGR2GRAY)
-hsv_1_channel = res_hsv[:,:,2]
+hsv_1_channel = res_hsv[:,:,0]
 yuv_1_channel = res_yuv[:,:,0]
 
 #binarisieren:
@@ -86,6 +86,7 @@ def detect_lines(bin_img):
     img = cut_image(bin_img) #bild beschneiden/oberen Rand schwarz machen
     line_segments = get_two_line_segments(img) #Liniensegmente finden
 
+    #keine segmente gefunden?
     if line_segments is None:
         return None
 
@@ -98,14 +99,16 @@ def detect_lines(bin_img):
     L2 = mb_to_tupel(b2,m2, img.shape[1])
     return (L1,L2)
 
-def draw_line(img,L1,L2):
+#zeichnet beide Linien im Bild ein
+def draw_lines(img,L1,L2):
+    img = img.copy()
     cv2.line(img, L1[0] , L1[1],(200,100,0),5)
     cv2.line(img, L2[0] , L2[1],(200,100,0),5)
+    return img
 
-    cv2.imshow('cropped_bgr',img)
-
-L1, L2 = detect_lines(bgr_bin)
-draw_line(img_bgr,L1,L2)
-
-cv2.waitKey(0)
-cv2.destroyAllWindows()
+for img in [hsv_bin]:
+    L1, L2 = detect_lines(img)
+    img = draw_lines(img_bgr,L1,L2)
+    cv2.imshow('foo',img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
