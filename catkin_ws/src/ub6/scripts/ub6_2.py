@@ -147,14 +147,15 @@ def pub_mb(m1,b1,m2,b2):
 def pub_img_lines(img_lines):
     global img_pub_lines
     bridge = CvBridge()
-    ros_img = bridge.cv2_to_imgmsg(img_lines)
+    ros_img = bridge.cv2_to_imgmsg(img_lines, "bgr8")
+    cv2.imwrite("foo.png",img_lines)
     img_pub_lines.publish(ros_img)
 
 def camCallback(data):
     bridge = CvBridge()
     print "new image"
-    cv_img = bridge.imgmsg_to_cv2(data)
-
+    cv_img = bridge.imgmsg_to_cv2(data,"bgr8")
+    cv2.imwrite("bar.png",cv_img)
     handle_new_image(cv_img)
 
 def init():
