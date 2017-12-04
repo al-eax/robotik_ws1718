@@ -2,8 +2,6 @@
 
 # Assignment 6
 
-
-
 | Name | MatrNr | Mail |
 |------|----------|-----|
 | Sven Heinrichsen | 4780388| s.heinrichsen@fu-berlin.de |
@@ -77,7 +75,7 @@ cv2.line(original_img, L2[0] , L2[1],(0,255,0),5)
 Here is the output image:
 ![](lines.png)
 
-Finally we published the line \([m1,b1,m2,b2])\ by using a `Float32MultiArray`:
+Finally we published the line \([m1,b1,m2,b2])\ by using a `Float32MultiArray` to store multiple values:
 
 ![](mb.png)
 
