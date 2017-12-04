@@ -17,27 +17,31 @@ def cut_image(img):
     return img
 
 def do_ransac_on_contur(contur):
+    #source http://scikit-learn.org/stable/auto_examples/linear_model/plot_ransac.html
     ransac = linear_model.RANSACRegressor()
+
+    #load all x and y coordinates in seperated lists (required by ransac)
     X = []
     Y = []
-    #lade Koordinaten aller weissen Pixel in X und Y
     for pxl in contur:
         X.append([pxl[0][1]])
         Y.append([pxl[0][0]])
-    ransac.fit(X, Y) #build classifier
-    b = ransac.estimator_.intercept_ #schnittpunkt
-    m = ransac.estimator_.coef_ #steigung
+
+    ransac.fit(X, Y) #build ransac classifier
+    b = ransac.estimator_.intercept_ #intersection
+    m = ransac.estimator_.coef_ #gradient
     return (b,m)
 
 #cluster two lines
 def get_two_line_segments(img):
     im2, contours, hierarchy = cv2.findContours(img.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    contours = sorted(contours, key = cv2.contourArea, reverse = True)
+    contours = sorted(contours, key = cv2.contourArea, reverse = True) #sort the segments by pixel count
     if len(contours) < 2:
         return None
-    return (contours[0],contours[1])
+    return (contours[0],contours[1]) #return the two biggest segments
 
-# wertet f(x)=x*m+b aus fuer f(0) und f(width) und gibt Punktkoordinaten zurueck
+
+# calculate and return the start and end points by evaluating f(x=0) and f(x=image_width)
 def mb_to_tupel(b,m,width):
     def f(x,b,m): return x*m + b
     x_1 = 0
@@ -49,29 +53,29 @@ def mb_to_tupel(b,m,width):
 #suche beide Linien in dem binarisierten Bild
 #gibt Start- und Endpunkt beider Linien als Tupel zurueck
 def detect_lines(bin_img):
-    img = cut_image(bin_img) #bild beschneiden/oberen Rand schwarz machen
-    line_segments = get_two_line_segments(img) #Liniensegmente finden
+    img = cut_image(bin_img) #remove noise
+    line_segments = get_two_line_segments(img) #find line segments
 
-    #keine segmente gefunden?
-    if line_segments is None:
+    if line_segments is None: #less than 2 segments found?
         return None
 
-    #berechne Schnittpunkt und Steigung fuer beide Linien:
+    #get line parameters for both segments:
     b1,m1 = do_ransac_on_contur(line_segments[0])
     b2,m2 = do_ransac_on_contur(line_segments[1])
 
     #publish m,b for both lines:
     pub_mb(m1,b1,m2,b2)
 
-    #Berechne Start- und Endpunkt der Linien
+    #get start and end points:
     L1 = mb_to_tupel(b1,m1, img.shape[1])
     L2 = mb_to_tupel(b2,m2, img.shape[1])
-    return (L1,L2)
+
+    return (L1,L2) #return start and end points for bost lines
 
 #zeichnet beide Linien im Bild ein
 def draw_lines(img,L1,L2):
-    img = img.copy()            # bgr
-    cv2.line(img, L1[0] , L1[1],(0,255,0),5)
+    img = img.copy()
+    cv2.line(img, L1[0] , L1[1],(0,255,0),5)# bgr
     cv2.line(img, L2[0] , L2[1],(0,255,0),5)
     return img
 
@@ -96,42 +100,31 @@ def handle_new_image(img_bgr):
     upper_gray_bgr = np.array([255,255,255])
 
     mask_bgr = cv2.inRange(img_bgr, lower_gray_bgr, upper_gray_bgr)
-    res_bgr = cv2.bitwise_and(img_bgr, img_bgr, mask = mask_bgr)
+    #res_bgr = cv2.bitwise_and(img_bgr, img_bgr, mask = mask_bgr)
 
     lower_gray_hsv = np.array([0,0,200])
     upper_gray_hsv = np.array([255,30,255])
 
     mask_hsv = cv2.inRange(img_hsv, lower_gray_hsv, upper_gray_hsv)
-    res_hsv = cv2.bitwise_and(img_bgr, img_bgr, mask = mask_hsv)
+    #res_hsv = cv2.bitwise_and(img_bgr, img_bgr, mask = mask_hsv)
 
     lower_gray_yuv = np.array([200,0,0])
     upper_gray_yuv = np.array([255,255,255])
     mask_yuv = cv2.inRange(img_yuv, lower_gray_yuv, upper_gray_yuv)
-    res_yuv = cv2.bitwise_and(img_bgr, img_bgr, mask = mask_yuv)
+    #res_yuv = cv2.bitwise_and(img_bgr, img_bgr, mask = mask_yuv)
 
-    #cv2.imwrite("mask_yuv.png" , mask_yuv)
-
-    #make 3 channel to 1 channel images:
-    bgr_1_channel = mask_bgr #cv2.cvtColor(res_bgr, cv2.COLOR_BGR2GRAY)
-    hsv_1_channel = mask_hsv #res_hsv[:,:,0]
-    yuv_1_channel = mask_yuv #res_yuv[:,:,0]
+    #lets use the mask as binady image:
+    bgr_1_channel = mask_bgr
+    hsv_1_channel = mask_hsv
+    yuv_1_channel = mask_yuv
 
     pub_imgs(bgr_1_channel,hsv_1_channel,yuv_1_channel)
 
-    #binarisieren:
-    _ , bgr_bin = cv2.threshold(bgr_1_channel,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-    _ , hsv_bin = cv2.threshold(hsv_1_channel,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-    _ , yuv_bin = cv2.threshold(yuv_1_channel,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-
-
-    #for i, img in enumerate([hsv_bin]):
-    L1, L2 = detect_lines(yuv_bin)
-    img = draw_lines(img_bgr,L1,L2)
+    L1, L2 = detect_lines(yuv_bin) #get start and end points for lines in yuv img
+    img = draw_lines(img_bgr,L1,L2) #draw lines on original image
     pub_img_lines(img)
-    #cv2.imwrite("lines .png", img)
 
-
-
+#publish line parameters:
 def pub_mb(m1,b1,m2,b2):
     global mb_pub
     #source: https://gist.github.com/jarvisschultz/7a886ed2714fac9f5226
@@ -144,6 +137,7 @@ def pub_mb(m1,b1,m2,b2):
 
     mb_pub.publish(mat)
 
+#publish the bgr image the drawn lines
 def pub_img_lines(img_lines):
     global img_pub_lines
     bridge = CvBridge()
@@ -151,6 +145,7 @@ def pub_img_lines(img_lines):
     cv2.imwrite("foo.png",img_lines)
     img_pub_lines.publish(ros_img)
 
+#callback function
 def camCallback(data):
     bridge = CvBridge()
     print "new image"
@@ -164,6 +159,7 @@ def init():
     global img_pub_yuv
     global mb_pub
     global img_pub_lines
+
     rospy.init_node('foobar', anonymous=True)
     rospy.Subscriber("/app/camera/rgb/image_color", Image, camCallback, queue_size=1)
     img_pub_hsv = rospy.Publisher("/line_img/hsv",Image,queue_size=1)
@@ -173,10 +169,6 @@ def init():
     img_pub_lines = rospy.Publisher("/line_img/lines",Image,queue_size=1)
     mb_pub = rospy.Publisher("/mb",Float32MultiArray,queue_size=1)
 
-
-#IMAGE_PATH = '../../../../ub6/'
-#img_bgr = cv2.imread(IMAGE_PATH + 'cam_car121.png')
-#handle_new_image(img_bgr)
 
 if __name__ == '__main__':
     try:
