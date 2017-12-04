@@ -9,10 +9,10 @@
 
 __Repo:__ [https://github.com/al-eax/robotik_ws1718](https://github.com/al-eax/robotik_ws1718)
 
-## 1.​ Setting​ ​up​ ​the​ ​field
+## 1. Setting up the field
 ![](setup.jpg)
 
-## 2.​ ​Lane​ ​segmentation
+## 2. Lane segmentation
 
 The YUV color space seems to work best. This is because it can include every color for a specific white value. HSV works similarly but it is hard to find the right saturation value so that the color share stays low enough. RGB does not work well because the gray value correlates directly with the color shares.
 
@@ -34,7 +34,7 @@ __YUV__
 
 At first, we defined the color ranges to generate a mask for each color space. The method `cv2.inRange` returns this mask with all pixels in our range set to \(255)\.
 
-## 3.​ ​ Getting​ ​the​ ​line​
+## 3. Getting the line
 From the binary image of task 2 we set the top 20% of the image to black, to remove the noise.
 
 Then we used `cv.findContours` to get the two white segments with most pixels:
@@ -59,7 +59,7 @@ def do_ransac_on_contur(contur):
     return (b,m)
 ```
 
-Then we can get the start and end points for both lines by applying \( f(0) , f(image\_width))\ for \(f(x) = x*m+b )\ to draw both lines:
+Then we can get the start and end points for both lines by applying \(f(0) , f(image\_width))\ for \(f(x) = x*m+b)\ to draw both lines:
 
 ```py
 b1,m1 = do_ransac_on_contur(line_segments[0])#get line parameters m,b
