@@ -10,7 +10,6 @@ from std_msgs.msg import MultiArrayDimension
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
 
-
 #macht die oberen 20% des Bildes schwarz,
 def cut_image(img):
     w = img.shape[1]
@@ -71,10 +70,23 @@ def detect_lines(bin_img):
 
 #zeichnet beide Linien im Bild ein
 def draw_lines(img,L1,L2):
-    img = img.copy()
-    cv2.line(img, L1[0] , L1[1],(200,100,0),5)
-    cv2.line(img, L2[0] , L2[1],(200,100,0),5)
+    img = img.copy()            # bgr
+    cv2.line(img, L1[0] , L1[1],(0,255,0),5)
+    cv2.line(img, L2[0] , L2[1],(0,255,0),5)
     return img
+
+def pub_imgs(img_bgr,img_hsv, img_yuv):
+    global img_pub_yuv
+    global img_pub_hsv
+    global img_pub_bgr
+
+    bridge = CvBridge()
+    ros_img_hsv = bridge.cv2_to_imgmsg(img_hsv)
+    img_pub_hsv.publish(ros_img_hsv)
+    ros_img_bgr = bridge.cv2_to_imgmsg(img_bgr)
+    img_pub_bgr.publish(ros_img_bgr)
+    ros_img_yuv = bridge.cv2_to_imgmsg(img_yuv)
+    img_pub_yuv.publish(ros_img_yuv)
 
 def handle_new_image(img_bgr):
     img_hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
@@ -97,12 +109,14 @@ def handle_new_image(img_bgr):
     mask_yuv = cv2.inRange(img_yuv, lower_gray_yuv, upper_gray_yuv)
     res_yuv = cv2.bitwise_and(img_bgr, img_bgr, mask = mask_yuv)
 
-    cv2.imwrite("mask_yuv.png" , mask_yuv)
+    #cv2.imwrite("mask_yuv.png" , mask_yuv)
 
     #make 3 channel to 1 channel images:
     bgr_1_channel = mask_bgr #cv2.cvtColor(res_bgr, cv2.COLOR_BGR2GRAY)
     hsv_1_channel = mask_hsv #res_hsv[:,:,0]
     yuv_1_channel = mask_yuv #res_yuv[:,:,0]
+
+    pub_imgs(bgr_1_channel,hsv_1_channel,yuv_1_channel)
 
     #binarisieren:
     _ , bgr_bin = cv2.threshold(bgr_1_channel,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
@@ -110,13 +124,12 @@ def handle_new_image(img_bgr):
     _ , yuv_bin = cv2.threshold(yuv_1_channel,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
 
 
-    for i, img in enumerate([hsv_bin,bgr_bin,yuv_bin]):
-        L1, L2 = detect_lines(img)
-        img = draw_lines(img_bgr,L1,L2)
-        #cv2.imshow('foo' + str(i),img)
-        cv2.imwrite("lines " + str(i) +  ".png", img)
-        #cv2.waitKey(0)
-        #cv2.destroyAllWindows()
+    #for i, img in enumerate([hsv_bin]):
+    L1, L2 = detect_lines(yuv_bin)
+    img = draw_lines(img_bgr,L1,L2)
+    pub_img_lines(img)
+    #cv2.imwrite("lines .png", img)
+
 
 
 def pub_mb(m1,b1,m2,b2):
@@ -131,25 +144,32 @@ def pub_mb(m1,b1,m2,b2):
 
     mb_pub.publish(mat)
 
-def pub_img(img):
-    global img_pub
+def pub_img_lines(img_lines):
+    global img_pub_lines
     bridge = CvBridge()
-    ros_img = bridge.cv2_to_imgmsg(img)
-    img_pub.publish(ros_img)
+    ros_img = bridge.cv2_to_imgmsg(img_lines)
+    img_pub_lines.publish(ros_img)
 
 def camCallback(data):
     bridge = CvBridge()
     print "new image"
     cv_img = bridge.imgmsg_to_cv2(data)
+
     handle_new_image(cv_img)
 
 def init():
-    global img_pub
+    global img_pub_hsv
+    global img_pub_bgr
+    global img_pub_yuv
     global mb_pub
+    global img_pub_lines
     rospy.init_node('foobar', anonymous=True)
-    #TODO Cam
     rospy.Subscriber("/app/camera/rgb/image_color", Image, camCallback, queue_size=1)
-    img_pub = rospy.Publisher("/line_img",Image,queue_size=1)
+    img_pub_hsv = rospy.Publisher("/line_img/hsv",Image,queue_size=1)
+    img_pub_bgr = rospy.Publisher("/line_img/bgr",Image,queue_size=1)
+    img_pub_yuv = rospy.Publisher("/line_img/yuv",Image,queue_size=1)
+
+    img_pub_lines = rospy.Publisher("/line_img/lines",Image,queue_size=1)
     mb_pub = rospy.Publisher("/mb",Float32MultiArray,queue_size=1)
 
 
