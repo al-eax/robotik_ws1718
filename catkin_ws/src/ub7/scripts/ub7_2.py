@@ -76,6 +76,7 @@ def findBaloons((cx,cy),(h,s,v)):
     global purple_baloon
     global res_bgr
     
+    # filter out black and colorless spots
     if (h,s,v) == (0,0,0) or s < 115:
         return
 
