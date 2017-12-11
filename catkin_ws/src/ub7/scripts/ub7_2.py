@@ -131,8 +131,15 @@ def handle_new_image(img_bgr):
     rl_coords = [RL_RED, RL_GREEN ,RL_BLUE, RL_PURPLE]
 
     R,t = rigid_transform_3D(np.array(rl_coords),np.array(img_coords))
-    print R
-    print t
+
+    img_c_x = img_hsv.shape[1]
+    img_c_y = img_hsv.shape[0]
+
+    loc_vec = np.array([img_c_x,img_c_y])
+    rl_loc = dot(R,loc_vec) + t
+    print rl_loc
+    #print R
+    #print t
 
 
 #callback function
