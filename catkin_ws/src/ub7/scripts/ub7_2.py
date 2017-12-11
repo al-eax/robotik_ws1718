@@ -87,22 +87,22 @@ def findBaloons((cx,cy),(h,s,v)):
     if h > 170 or h < 10:
         red_baloon = (cx,cy)
         print "red = ", red_baloon
-        cv2.putText(res_bgr, str((h,s,v)), (cx,cy), font, 0.25, (255,255,255), 1)
+        cv2.putText(res_bgr, str((cx,cy)), (cx,cy), font, 0.25, (255,255,255), 1)
         cv2.putText(res_bgr, "red", (cx,cy+5), font, 0.25, (0,0,255), 1)
     if h > 65 and h < 75:
         green_baloon = (cx,cy)
         print "green = ", green_baloon
-        cv2.putText(res_bgr, str((h,s,v)), (cx,cy), font, 0.25, (255,255,255), 1)
+        cv2.putText(res_bgr, str((cx,cy)), (cx,cy), font, 0.25, (255,255,255), 1)
         cv2.putText(res_bgr, "green", (cx,cy+5), font, 0.25, (0,255,0), 1)
     if h > 115 and h < 125:
         blue_baloon = (cx,cy)
         print "blue = ", blue_baloon
-        cv2.putText(res_bgr, str((h,s,v)), (cx,cy), font, 0.25, (255,255,255), 1)
+        cv2.putText(res_bgr, str((cx,cy)), (cx,cy), font, 0.25, (255,255,255), 1)
         cv2.putText(res_bgr, "blue", (cx,cy+5), font, 0.25, (255,0,0), 1)
     if h > 125 and h < 140:
         purple_baloon = (cx,cy)
         print "purple = ", purple_baloon
-        cv2.putText(res_bgr, str((h,s,v)), (cx,cy), font, 0.25, (255,255,255), 1)
+        cv2.putText(res_bgr, str((cx,cy)), (cx,cy), font, 0.25, (255,255,255), 1)
         cv2.putText(res_bgr, "purple", (cx,cy+5), font, 0.25, (255,0,255), 1)
 
 # function given in assignment
@@ -144,7 +144,7 @@ def handle_new_image(img_bgr):
     # get rotation matrix, translation vector and scale
     R, t, scale = rigid_transform_3D(np.array(img_coords),np.array(rl_coords))
 
-    # yaw is atan(sin/cos) for 360°
+    # yaw is atan(sin/cos) for 360 degrees
     yaw = math.atan2(R[1][0], R[0][0])
     if first_yaw == -10:
         first_yaw = yaw
