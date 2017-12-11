@@ -23,6 +23,7 @@ RL_BLUE =  np.array((4.18, 1.77))
 RL_PURPLE =  np.array((2.29, 2.4))
 
 first_yaw = -10
+font = cv2.FONT_HERSHEY_SIMPLEX
 
 
 # Input: expects Nx3 matrix of points
@@ -78,26 +79,29 @@ def findBaloons((cx,cy),(h,s,v)):
     if (h,s,v) == (0,0,0) or s < 115:
         return
 
-    font = cv2.FONT_HERSHEY_SIMPLEX
     #cv2.putText(res_bgr, str((h,s,v)), (cx,cy), font, 0.25, (255,255,255), 1)
 
 
     if h > 170 or h < 10:
         red_baloon = (cx,cy)
         print "red = ", red_baloon
-        #cv2.putText(res_bgr, "red", (cx,cy+5), font, 0.25, (0,0,255), 1)
+        cv2.putText(res_bgr, str((h,s,v)), (cx,cy), font, 0.25, (255,255,255), 1)
+        cv2.putText(res_bgr, "red", (cx,cy+5), font, 0.25, (0,0,255), 1)
     if h > 65 and h < 75:
         green_baloon = (cx,cy)
         print "green = ", green_baloon
-        #cv2.putText(res_bgr, "green", (cx,cy+5), font, 0.25, (0,255,0), 1)
+        cv2.putText(res_bgr, str((h,s,v)), (cx,cy), font, 0.25, (255,255,255), 1)
+        cv2.putText(res_bgr, "green", (cx,cy+5), font, 0.25, (0,255,0), 1)
     if h > 115 and h < 125:
         blue_baloon = (cx,cy)
         print "blue = ", blue_baloon
-        #cv2.putText(res_bgr, "blue", (cx,cy+5), font, 0.25, (255,0,0), 1)
+        cv2.putText(res_bgr, str((h,s,v)), (cx,cy), font, 0.25, (255,255,255), 1)
+        cv2.putText(res_bgr, "blue", (cx,cy+5), font, 0.25, (255,0,0), 1)
     if h > 125 and h < 140:
         purple_baloon = (cx,cy)
         print "purple = ", purple_baloon
-        #cv2.putText(res_bgr, "purple", (cx,cy+5), font, 0.25, (255,0,255), 1)
+        cv2.putText(res_bgr, str((h,s,v)), (cx,cy), font, 0.25, (255,255,255), 1)
+        cv2.putText(res_bgr, "purple", (cx,cy+5), font, 0.25, (255,0,255), 1)
 
 def yaw_to_quaternion(yaw):
     return Quaternion(0,0,math.sin(yaw / 2) , math.cos(yaw / 2))
@@ -127,7 +131,6 @@ def handle_new_image(img_bgr):
         cy = int(M['m01']/M['m00'])
         findBaloons((cx,cy), img_hsv[cy][cx])
 
-    #pub_imgs(res_bgr)
 
     img_coords = [np.array(red_baloon), np.array(green_baloon) ,np.array(blue_baloon), np.array(purple_baloon) ]
     rl_coords = [RL_RED, RL_GREEN ,RL_BLUE, RL_PURPLE]
@@ -146,12 +149,15 @@ def handle_new_image(img_bgr):
         yaw += 2*math.pi
     img_c_x = img_hsv.shape[1] / 2
     img_c_y = img_hsv.shape[0] / 2
-
+    
     loc_vec = np.array([img_c_x,img_c_y])
     rl_loc = (dot(R,loc_vec) + t) * scale
-    print rl_loc
+    
+    cv2.putText(res_bgr, "position = " + str(rl_loc), (loc_vec[0], loc_vec[1] - 5), font, 0.25, (255,255,255), 1)
+    cv2.putText(res_bgr, "yaw = " + str(yaw), (loc_vec[0], loc_vec[1] + 5), font, 0.25, (255,255,255), 1)
+    
+    pub_imgs(res_bgr)
     publ_odom(rl_loc, yaw)
-    print '-----------------------------done--------------------------------'
 
 
 
