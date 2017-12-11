@@ -9,7 +9,13 @@ from std_msgs.msg import MultiArrayDimension
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
 from numpy import *
-from math import sqrt
+from math import *
+
+from nav_msgs.msg import Odometry
+from geometry_msgs.msg import Point, Quaternion, Pose
+
+import rospy
+import roslib
 
 RL_GREEN = np.array((2.29, 1.14))
 RL_RED =  np.array((3.55, 3.03))
@@ -51,12 +57,14 @@ def rigid_transform_3D(A, B):
     return R, t
 
 def pub_imgs(img):
+    global odom_pub
+    odom_pub = rospy.Publisher('/my_odom', Odometry)
 
     #cv2.imshow('yuv', img_yuv)
 
     #img_pub_hsv.publish(ros_img_hsv)
     ros_img = bridge.cv2_to_imgmsg(img)
-    img_pub_yuv.publish(ros_img)
+    #img_pub_yuv.publish(ros_img)
 
 def findBaloons((cx,cy),(h,s,v)):
     global red_baloon
@@ -95,6 +103,8 @@ def findBaloons((cx,cy),(h,s,v)):
         print "purple = ", purple_baloon
         cv2.putText(res_bgr, "purple", (cx,cy+5), font, 0.25, (255,0,255), 1)
 
+def yaw_to_quaternion(yaw):
+    return Quaternion(0,0,math.sin(yaw / 2) , math.cos(yaw / 2))
 
 
 def handle_new_image(img_bgr):
@@ -130,16 +140,33 @@ def handle_new_image(img_bgr):
     img_coords = [np.array(red_baloon), np.array(green_baloon) ,np.array(blue_baloon), np.array(purple_baloon) ]
     rl_coords = [RL_RED, RL_GREEN ,RL_BLUE, RL_PURPLE]
 
-    R,t = rigid_transform_3D(np.array(rl_coords),np.array(img_coords))
+    R,t = rigid_transform_3D(np.array(img_coords),np.array(rl_coords))
 
-    img_c_x = img_hsv.shape[1]
-    img_c_y = img_hsv.shape[0]
+
+    yaw = math.acos(R[0][0])
+    print "yaw" , yaw
+    img_c_x = img_hsv.shape[1] / 2
+    img_c_y = img_hsv.shape[0] / 2
 
     loc_vec = np.array([img_c_x,img_c_y])
     rl_loc = dot(R,loc_vec) + t
     print rl_loc
+    publ_odom(rl_loc, yaw)
+
     #print R
     #print t
+
+
+def publ_odom(rl_loc, yaw):
+    print "pub"
+    global odom_pub
+    msg = Odometry()
+    msg.header.stamp = rospy.Time.now()
+    msg.header.frame_id = "odom"
+    #msg.child_frame_id = self.child_frame_id # i.e. '/base_footprint'
+
+    msg.pose.pose = Pose(Point(rl_loc[0], rl_loc[1], 0) , yaw_to_quaternion(yaw) )
+    odom_pub.publish(msg)
 
 
 #callback function
@@ -158,12 +185,13 @@ def init():
     rospy.init_node('foobar', anonymous=True)
     bridge = CvBridge()
     rospy.Subscriber("/usb_cam/image_rect_color", Image, camCallback, queue_size=1)
-    img_pub_yuv = rospy.Publisher("/mask/yuv",Image,queue_size=1)
+    #img_pub_yuv = rospy.Publisher("/mask/yuv",Image,queue_size=1)
 
 
 if __name__ == '__main__':
     try:
         init()
+        print "init"
         rospy.spin()
     except rospy.ROSInterruptException:
         pass
