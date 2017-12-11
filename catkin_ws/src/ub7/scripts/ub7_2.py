@@ -22,6 +22,7 @@ RL_RED =  np.array((3.55, 3.03))
 RL_BLUE =  np.array((4.18, 1.77))
 RL_PURPLE =  np.array((2.29, 2.4))
 
+first_yaw = -10
 
 
 # Input: expects Nx3 matrix of points
@@ -31,40 +32,41 @@ RL_PURPLE =  np.array((2.29, 2.4))
 
 def rigid_transform_3D(A, B):
     assert len(A) == len(B)
+
     N = A.shape[0]; # total points
 
     centroid_A = mean(A, axis=0)
     centroid_B = mean(B, axis=0)
-
+    
     # centre the points
     AA = A - tile(centroid_A, (N, 1))
     BB = B - tile(centroid_B, (N, 1))
 
     # dot is matrix multiplication for array
-    H = dot(transpose(AA) , BB)
+    H = dot(transpose(AA), BB)
+
     U, S, Vt = linalg.svd(H)
 
-    R = Vt.T * U.T
+    R = dot(Vt.T, U.T)
+    
+    print S
+    print R
 
     # special reflection case
     if linalg.det(R) < 0:
        print "Reflection detected"
-       Vt[1,:] *= -1
-       R = Vt.T * U.T
+       #Vt[1,:] *= -1
+       #R = dot(Vt.T, U.T)
 
-    t = dot(-R,centroid_A.T) + centroid_B.T
+    scale = linalg.norm((centroid_B - RL_RED), 2) / linalg.norm((centroid_A - red_baloon), 2)
+    t = dot(-R, centroid_A.T) + centroid_B.T
+    return R, t, scale    
+    
 
-    return R, t
 
 def pub_imgs(img):
-    global odom_pub
-    odom_pub = rospy.Publisher('/my_odom', Odometry)
-
-    #cv2.imshow('yuv', img_yuv)
-
-    #img_pub_hsv.publish(ros_img_hsv)
     ros_img = bridge.cv2_to_imgmsg(img)
-    #img_pub_yuv.publish(ros_img)
+    img_pub.publish(ros_img)
 
 def findBaloons((cx,cy),(h,s,v)):
     global red_baloon
@@ -72,36 +74,30 @@ def findBaloons((cx,cy),(h,s,v)):
     global blue_baloon
     global purple_baloon
     global res_bgr
-
-    #print (cx,cy)
-    #print (h,s,v)
-
-    if (h,s,v) == (0,0,0) or s < 125:
+    
+    if (h,s,v) == (0,0,0) or s < 115:
         return
-    #print (cx, cy)
-    #print (h,s,v)
-    #print "---"
 
     font = cv2.FONT_HERSHEY_SIMPLEX
-    cv2.putText(res_bgr, str((h,s,v)), (cx,cy), font, 0.25, (255,255,255), 1)
+    #cv2.putText(res_bgr, str((h,s,v)), (cx,cy), font, 0.25, (255,255,255), 1)
 
 
     if h > 170 or h < 10:
         red_baloon = (cx,cy)
         print "red = ", red_baloon
-        cv2.putText(res_bgr, "red", (cx,cy+5), font, 0.25, (0,0,255), 1)
+        #cv2.putText(res_bgr, "red", (cx,cy+5), font, 0.25, (0,0,255), 1)
     if h > 65 and h < 75:
         green_baloon = (cx,cy)
         print "green = ", green_baloon
-        cv2.putText(res_bgr, "green", (cx,cy+5), font, 0.25, (0,255,0), 1)
+        #cv2.putText(res_bgr, "green", (cx,cy+5), font, 0.25, (0,255,0), 1)
     if h > 115 and h < 125:
         blue_baloon = (cx,cy)
         print "blue = ", blue_baloon
-        cv2.putText(res_bgr, "blue", (cx,cy+5), font, 0.25, (255,0,0), 1)
+        #cv2.putText(res_bgr, "blue", (cx,cy+5), font, 0.25, (255,0,0), 1)
     if h > 125 and h < 140:
         purple_baloon = (cx,cy)
         print "purple = ", purple_baloon
-        cv2.putText(res_bgr, "purple", (cx,cy+5), font, 0.25, (255,0,255), 1)
+        #cv2.putText(res_bgr, "purple", (cx,cy+5), font, 0.25, (255,0,255), 1)
 
 def yaw_to_quaternion(yaw):
     return Quaternion(0,0,math.sin(yaw / 2) , math.cos(yaw / 2))
@@ -109,6 +105,7 @@ def yaw_to_quaternion(yaw):
 
 def handle_new_image(img_bgr):
     global res_bgr
+    global first_yaw
 
     img_yuv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2YUV)
 
@@ -129,32 +126,33 @@ def handle_new_image(img_bgr):
         cx = int(M['m10']/M['m00'])
         cy = int(M['m01']/M['m00'])
         findBaloons((cx,cy), img_hsv[cy][cx])
-        #print img_hsv[cx][cy]
 
-    #cv2.imwrite('res.png',res_bgr)
-    #cv2.imwrite('hsv_res.png',img_hsv)
-
-    print '-----------------------------done--------------------------------'
-    pub_imgs(res_bgr)
+    #pub_imgs(res_bgr)
 
     img_coords = [np.array(red_baloon), np.array(green_baloon) ,np.array(blue_baloon), np.array(purple_baloon) ]
     rl_coords = [RL_RED, RL_GREEN ,RL_BLUE, RL_PURPLE]
 
-    R,t = rigid_transform_3D(np.array(img_coords),np.array(rl_coords))
+    R, t, scale = rigid_transform_3D(np.array(img_coords),np.array(rl_coords))
 
 
-    yaw = math.acos(R[0][0])
+    yaw = math.atan2(R[1][0], R[0][0])
+    if first_yaw == -10:
+        first_yaw = yaw
+    yaw -= first_yaw
     print "yaw" , yaw
+    if yaw > math.pi:
+        yaw -= 2* math.pi
+    elif yaw < -math.pi:
+        yaw += 2*math.pi
     img_c_x = img_hsv.shape[1] / 2
     img_c_y = img_hsv.shape[0] / 2
 
     loc_vec = np.array([img_c_x,img_c_y])
-    rl_loc = dot(R,loc_vec) + t
+    rl_loc = (dot(R,loc_vec) + t) * scale
     print rl_loc
     publ_odom(rl_loc, yaw)
+    print '-----------------------------done--------------------------------'
 
-    #print R
-    #print t
 
 
 def publ_odom(rl_loc, yaw):
@@ -163,29 +161,25 @@ def publ_odom(rl_loc, yaw):
     msg = Odometry()
     msg.header.stamp = rospy.Time.now()
     msg.header.frame_id = "odom"
-    #msg.child_frame_id = self.child_frame_id # i.e. '/base_footprint'
-
     msg.pose.pose = Pose(Point(rl_loc[0], rl_loc[1], 0) , yaw_to_quaternion(yaw) )
     odom_pub.publish(msg)
 
 
 #callback function
 def camCallback(data):
-    #print "new image"
     cv_img = bridge.imgmsg_to_cv2(data, "bgr8")
-    #cv2.imwrite('rgb.png', cv_img)
     handle_new_image(cv_img)
 
 def init():
-    global img_pub_hsv
-    global img_pub_bgr
-    global img_pub_yuv
+    global img_pub
     global bridge
+    global odom_pub
 
     rospy.init_node('foobar', anonymous=True)
     bridge = CvBridge()
     rospy.Subscriber("/usb_cam/image_rect_color", Image, camCallback, queue_size=1)
-    #img_pub_yuv = rospy.Publisher("/mask/yuv",Image,queue_size=1)
+    odom_pub = rospy.Publisher('/my_odom', Odometry)
+    img_pub = rospy.Publisher("/mask/yuv",Image,queue_size=1)
 
 
 if __name__ == '__main__':
