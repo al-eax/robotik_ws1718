@@ -8,23 +8,31 @@ from std_msgs.msg import Float32MultiArray
 from std_msgs.msg import MultiArrayDimension
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
+
+RL_GREEN = (2.29, 1.14)
+RL_RED = (3.55, 3.03)
+RL_BLUE = (4.18, 1.77)
+RL_PURPLE = (2.29, 2.4)
+
+
+IMG_RED = (0,0)
+IMG_BLUE = (0,0)
+IMG_GREEN = (0,0)
+IMG_PURBLE = (0,0)
+
+
+
 from numpy import *
 from math import sqrt
-
-RL_GREEN = np.array((2.29, 1.14))
-RL_RED =  np.array((3.55, 3.03))
-RL_BLUE =  np.array((4.18, 1.77))
-RL_PURPLE =  np.array((2.29, 2.4))
-
-
 
 # Input: expects Nx3 matrix of points
 # Returns R,t
 # R = 3x3 rotation matrix
-# t = 3x1 column
+# t = 3x1 column vector
 
 def rigid_transform_3D(A, B):
     assert len(A) == len(B)
+
     N = A.shape[0]; # total points
 
     centroid_A = mean(A, axis=0)
@@ -35,7 +43,8 @@ def rigid_transform_3D(A, B):
     BB = B - tile(centroid_B, (N, 1))
 
     # dot is matrix multiplication for array
-    H = dot(transpose(AA) , BB)
+    H = transpose(AA) * BB
+
     U, S, Vt = linalg.svd(H)
 
     R = Vt.T * U.T
@@ -43,62 +52,49 @@ def rigid_transform_3D(A, B):
     # special reflection case
     if linalg.det(R) < 0:
        print "Reflection detected"
-       Vt[1,:] *= -1
+       Vt[2,:] *= -1
        R = Vt.T * U.T
 
-    t = dot(-R,centroid_A.T) + centroid_B.T
+    t = -R*centroid_A.T + centroid_B.T
+
+    print t
 
     return R, t
 
-def pub_imgs(img):
+def pub_imgs(img_yuv):
+    global img_pub_yuv
+    global img_pub_hsv
+    global img_pub_bgr
 
-    #cv2.imshow('yuv', img_yuv)
 
-    #img_pub_hsv.publish(ros_img_hsv)
-    ros_img = bridge.cv2_to_imgmsg(img)
-    img_pub_yuv.publish(ros_img)
+    ros_img_yuv = bridge.cv2_to_imgmsg(img_yuv)
+    img_pub_yuv.publish(ros_img_yuv)
 
 def findBaloons((cx,cy),(h,s,v)):
     global red_baloon
     global green_baloon
     global blue_baloon
     global purple_baloon
-    global res_bgr
 
-    #print (cx,cy)
-    #print (h,s,v)
+    print (h,s,v)
 
-    if (h,s,v) == (0,0,0) or s < 125:
-        return
-    #print (cx, cy)
-    #print (h,s,v)
-    #print "---"
-
-    font = cv2.FONT_HERSHEY_SIMPLEX
-    cv2.putText(res_bgr, str((h,s,v)), (cx,cy), font, 0.25, (255,255,255), 1)
-
-
+def getBln(h):
     if h > 170 or h < 10:
-        red_baloon = (cx,cy)
-        print "red = ", red_baloon
-        cv2.putText(res_bgr, "red", (cx,cy+5), font, 0.25, (0,0,255), 1)
+        return "red"
     if h > 65 and h < 75:
-        green_baloon = (cx,cy)
-        print "green = ", green_baloon
-        cv2.putText(res_bgr, "green", (cx,cy+5), font, 0.25, (0,255,0), 1)
+        return "green"
     if h > 115 and h < 125:
-        blue_baloon = (cx,cy)
-        print "blue = ", blue_baloon
-        cv2.putText(res_bgr, "blue", (cx,cy+5), font, 0.25, (255,0,0), 1)
+        return "blue"
     if h > 125 and h < 140:
-        purple_baloon = (cx,cy)
-        print "purple = ", purple_baloon
-        cv2.putText(res_bgr, "purple", (cx,cy+5), font, 0.25, (255,0,255), 1)
+        return "purple"
 
 
 
 def handle_new_image(img_bgr):
-    global res_bgr
+    global IMG_RED
+    global IMG_BLUE
+    global IMG_GREEN
+    global IMG_PURBLE
 
     img_yuv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2YUV)
 
@@ -109,30 +105,53 @@ def handle_new_image(img_bgr):
 
     _, contours, _ = cv2.findContours(mask_yuv, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-    res_bgr = cv2.bitwise_and(img_bgr, img_bgr, mask = mask_yuv)
-    img_hsv = cv2.cvtColor(res_bgr, cv2.COLOR_BGR2HSV)
+    res_yuv = cv2.bitwise_and(img_bgr, img_bgr, mask = mask_yuv)
+    img_hsv = cv2.cvtColor(res_yuv, cv2.COLOR_BGR2HSV)
 
+    contours = sorted(contours, key = cv2.contourArea, reverse = True)[0:10]
+
+    comps = []
     for cont in contours:
         M = cv2.moments(cont)
-        if M['m00'] <= 0:
+        area = cv2.contourArea(cont,True)
+        if area == 0:
             continue
-        cx = int(M['m10']/M['m00'])
-        cy = int(M['m01']/M['m00'])
-        findBaloons((cx,cy), img_hsv[cy][cx])
-        #print img_hsv[cx][cy]
+        l = cv2.arcLength(cont,True)
+        comps.append((l**2 / area , cont))
+    comps_sorted = sorted(comps,reverse = True, key=lambda tup: tup[0])[0:4]
 
-    #cv2.imwrite('res.png',res_bgr)
-    #cv2.imwrite('hsv_res.png',img_hsv)
 
-    print '-----------------------------done--------------------------------'
-    pub_imgs(res_bgr)
+    for (cmp, cont) in comps_sorted:
+        #print np.mean(bs)
+        M = cv2.moments(cont)
+        if M["m00"] <= 0:
+            continue
+        cX = int(M["m10"] / M["m00"])
+        cY = int(M["m01"] / M["m00"])
+        H = img_hsv[cY][cX][0]
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        cv2.putText(img_bgr, getBln(H) , (cX,cY+5), font, 0.25, (255,255,255), 1)
 
-    img_coords = [np.array(red_baloon), np.array(green_baloon) ,np.array(blue_baloon), np.array(purple_baloon) ]
-    rl_coords = [RL_RED, RL_GREEN ,RL_BLUE, RL_PURPLE]
 
-    R,t = rigid_transform_3D(np.array(rl_coords),np.array(img_coords))
-    print R
-    print t
+
+        if getBln(H) == "red":
+            IMG_RED = (cx,cy)
+        if getBln(H) == "blue":
+            IMG_BLUE = (cx,cy)
+        if getBln(H) == "green":
+            IMG_GREEN = (cx,cy)
+        if getBln(H) == "purple":
+            IMG_PURBLE = (cx,cy)
+
+    cv2.imwrite("img_bgr.png",img_bgr)
+
+
+
+    #print "foo"
+    #pub_imgs(res_yuv)
+
+
+def img_to_rl(IMG_BLNS,RL_BLNS):
 
 
 #callback function
@@ -151,6 +170,8 @@ def init():
     rospy.init_node('foobar', anonymous=True)
     bridge = CvBridge()
     rospy.Subscriber("/usb_cam/image_rect_color", Image, camCallback, queue_size=1)
+    #img_pub_bgr = rospy.Publisher("/mask/bgr",Image,queue_size=1)
+    #img_pub_hsv = rospy.Publisher("/mask/hsv",Image,queue_size=1)
     img_pub_yuv = rospy.Publisher("/mask/yuv",Image,queue_size=1)
 
 
