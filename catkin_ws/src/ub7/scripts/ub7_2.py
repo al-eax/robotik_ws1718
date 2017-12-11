@@ -16,62 +16,58 @@ RL_PURPLE = (2.29, 2.4)
 
 
 
-def pub_imgs(img_yuv):
-    global img_pub_yuv
-    global img_pub_hsv
-    global img_pub_bgr
+def pub_imgs(img):
     
-    #cv2.imshow('bgr', img_bgr)
-    #cv2.imshow('hsv', img_hsv)
     #cv2.imshow('yuv', img_yuv)
-
-    #ros_img_bgr = bridge.cv2_to_imgmsg(img_bgr)
-    #img_pub_bgr.publish(ros_img_bgr)
-    #ros_img_hsv = bridge.cv2_to_imgmsg(img_hsv)
+    
     #img_pub_hsv.publish(ros_img_hsv)
-    ros_img_yuv = bridge.cv2_to_imgmsg(img_yuv)
-    img_pub_yuv.publish(ros_img_yuv)
+    ros_img = bridge.cv2_to_imgmsg(img)
+    img_pub_yuv.publish(ros_img)
     
 def findBaloons((cx,cy),(h,s,v)):
     global red_baloon
     global green_baloon
     global blue_baloon
     global purple_baloon
+    global res_bgr
     
-    print (h,s,v)
+    #print (cx,cy)
+    #print (h,s,v)
     
-    if h > 340 and h < 20:
+    if (h,s,v) == (0,0,0) or s < 125:
+        return
+    #print (cx, cy)
+    #print (h,s,v)
+    #print "---"
+    
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    cv2.putText(res_bgr, str((h,s,v)), (cx,cy), font, 0.25, (255,255,255), 1)
+    
+    
+    if h > 170 or h < 10:
         red_baloon = (cx,cy)
-        print red_baloon
-    if h > 100 and h < 140:
+        print "red = ", red_baloon
+        cv2.putText(res_bgr, "red", (cx,cy+5), font, 0.25, (0,0,255), 1)
+    if h > 65 and h < 75:
         green_baloon = (cx,cy)
-        print green_baloon
-    if h > 220 and h < 260:
+        print "green = ", green_baloon
+        cv2.putText(res_bgr, "green", (cx,cy+5), font, 0.25, (0,255,0), 1)
+    if h > 115 and h < 125:
         blue_baloon = (cx,cy)
-        print blue_baloon
-    if h > 280 and h < 320:
+        print "blue = ", blue_baloon
+        cv2.putText(res_bgr, "blue", (cx,cy+5), font, 0.25, (255,0,0), 1)
+    if h > 125 and h < 140:
         purple_baloon = (cx,cy)
-        print purple_baloon
+        print "purple = ", purple_baloon
+        cv2.putText(res_bgr, "purple", (cx,cy+5), font, 0.25, (255,0,255), 1)
     
     
 
 def handle_new_image(img_bgr):
+    global res_bgr
     
-    
-    #img_hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
     img_yuv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2YUV)
 
-    #lower_gray_bgr = np.array([200,200,200])
-    #upper_gray_bgr = np.array([255,255,255])
-
-    #mask_bgr = cv2.inRange(img_bgr, lower_gray_bgr, upper_gray_bgr)
-    #res_bgr = cv2.bitwise_and(img_bgr, img_bgr, mask = mask_bgr)
-
-    #lower_gray_hsv = np.array([0,0,200])
-    #upper_gray_hsv = np.array([255,30,255])
-
-    #mask_hsv = cv2.inRange(img_hsv, lower_gray_hsv, upper_gray_hsv)
-    #res_hsv = cv2.bitwise_and(img_bgr, img_bgr, mask = mask_hsv)
 
     lower_gray_yuv = np.array([50,0,0])
     upper_gray_yuv = np.array([200,255,255])
@@ -79,8 +75,8 @@ def handle_new_image(img_bgr):
     
     _, contours, _ = cv2.findContours(mask_yuv, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     
-    res_yuv = cv2.bitwise_and(img_bgr, img_bgr, mask = mask_yuv)
-    img_hsv = cv2.cvtColor(res_yuv, cv2.COLOR_BGR2HSV)
+    res_bgr = cv2.bitwise_and(img_bgr, img_bgr, mask = mask_yuv)
+    img_hsv = cv2.cvtColor(res_bgr, cv2.COLOR_BGR2HSV)
     
     for cont in contours:
         M = cv2.moments(cont)
@@ -88,11 +84,14 @@ def handle_new_image(img_bgr):
             continue
         cx = int(M['m10']/M['m00'])
         cy = int(M['m01']/M['m00'])
-        findBaloons((cx,cy),img_hsv[cx][cy])
+        findBaloons((cx,cy), img_hsv[cy][cx])
         #print img_hsv[cx][cy]
-    
+        
+    #cv2.imwrite('res.png',res_bgr)
+    #cv2.imwrite('hsv_res.png',img_hsv)
 
-    pub_imgs(res_yuv)
+    print '-----------------------------done--------------------------------'
+    pub_imgs(res_bgr)
 
 
 #callback function
@@ -111,8 +110,6 @@ def init():
     rospy.init_node('foobar', anonymous=True)
     bridge = CvBridge()
     rospy.Subscriber("/usb_cam/image_rect_color", Image, camCallback, queue_size=1)
-    #img_pub_bgr = rospy.Publisher("/mask/bgr",Image,queue_size=1)
-    #img_pub_hsv = rospy.Publisher("/mask/hsv",Image,queue_size=1)
     img_pub_yuv = rospy.Publisher("/mask/yuv",Image,queue_size=1)
 
 
