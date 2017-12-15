@@ -11,6 +11,7 @@ timestamps = []
 def odomCallback(data):
     timestamps.append(rospy.Time.now())rospy.Time.now()
     positions.append(data.pose.pose)
+    predict()
 
 def dist(p1,p2):
     return sqrt((p1.x-p2.x)**2 + (p1.y-p2.y)**2)
@@ -29,7 +30,7 @@ def calcVelocity():
 
 def quaternion_to_yaw(q):
     # https://answers.unity.com/questions/416169/finding-pitchrollyaw-from-quaternions.html
-    yaw = math.asin(2*q[0]*q[1] + 2*q[2]*q[3]);
+    yaw = math.asin(2*q.x*q.y + 2*q.z*q.w);
     #yaw = acos(q.w)
     return yaw
 
@@ -53,6 +54,13 @@ def predict():
 
 
 def update_position():
+    measuredGPSPosition = positions[-1]
+    measured_theta = quaternion_to_yaw(positions[-1].orientation)
+    (predicted_x, predicted_y, predicted_theta) = predicted_positions[-1]
+    k = 0.5
+    updated_x = k * measuredGPSPosition.position.x + (1-k) * predicted_x
+    updated_y = k * measuredGPSPosition.position.y + (1-k) * predicted_y
+    updated_theta = k * measured_theta + (1-k) * predicted_theta
 
 
 def main():
