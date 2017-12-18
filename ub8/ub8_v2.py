@@ -28,10 +28,33 @@ def yaw_to_quaternion(yaw):
 
 def calc_velocity():
     #TODO Beim rueckwerts fahren, neg geschwindigkeit
-    (x1, y1, _, t1) = odoms[-1] #
-    (x2, y2, _, t2) = odoms[-2] #
+    (x1, y1, _, t1) = odoms[-1] # aktuelles
+    (x2, y2, _, t2) = odoms[-2] # letztes
+
+
+	A = np.array([x1,y1]) #aktuelle
+	B = np.array([x2,y2]) #letzte
+	
+	#relative:
+	A = A - A
+	B = B - A
+	
+	E = np.array([1,0])#einheitsvektor
+	yaw = angle(B,E)
+	
+	real_yaw = 0#
+	if yaw <= real_yaw - 10 or yaw >= real_yaw + 10:
+		pass
+		#fahren vorsaerts
+	else:
+		#fahren rueckwerts
+
     d = dist(x1,y1,x2,y2)
     return d / float(t1-t2)
+
+
+def angle(A,B):
+	return acos( (A[0] * B[0] + A[1] * B[1])  /  np.linalg.norm(A,2) * np.linalg.norm(B,2) )
 
 
 
