@@ -1,13 +1,14 @@
 #!/usr/bin/env python
 import rospy
 import numpy as np
-from math import sqrt, cos, sin,asin, acos
+from math import sqrt, cos, sin,asin, acos, atan2
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Point, Quaternion, Pose
 
 import matplotlib
 import matplotlib.pyplot as plt
 
+import math
 import time
 
 gps = []
@@ -27,35 +28,24 @@ def yaw_to_quaternion(yaw):
     return Quaternion(0,0,sin(yaw / 2) , cos(yaw / 2))
 
 def calc_velocity():
-    #TODO Beim rueckwerts fahren, neg geschwindigkeit
     (x1, y1, _, t1) = odoms[-1] # aktuelles
     (x2, y2, _, t2) = odoms[-2] # letztes
 
+    secs = (t1 - t2).to_sec()
+    
+    # secs is < 0 if rosbag file repeats,
+    # workaround: use values of last time, does not work optimally though
+    if secs < 0:
+        (x1, y1, _, t1) = odoms[-2] # aktuelles
+        (x2, y2, _, t2) = odoms[-3] # letztes
+        secs = (t1 - t2).to_sec()
 
-	A = np.array([x1,y1]) #aktuelle
-	B = np.array([x2,y2]) #letzte
-	
-	#relative:
-	A = A - A
-	B = B - A
-	
-	E = np.array([1,0])#einheitsvektor
-	yaw = angle(B,E)
-	
-	real_yaw = 0#
-	if yaw <= real_yaw - 10 or yaw >= real_yaw + 10:
-		pass
-		#fahren vorsaerts
-	else:
-		#fahren rueckwerts
-
-    d = dist(x1,y1,x2,y2)
-    return d / float(t1-t2)
+    d = forward * dist(x1,y1,x2,y2) / float(secs)
+    return d
 
 
-def angle(A,B):
-	return acos( (A[0] * B[0] + A[1] * B[1])  /  np.linalg.norm(A,2) * np.linalg.norm(B,2) )
-
+def angle(A):
+    return atan2(A[1],A[0])
 
 
 def predict():
@@ -68,13 +58,19 @@ def predict():
 
     (_,_,theta_1,t_1) = gps[-1]
     (_,_,theta_2,t_2) = gps[-2]
-    delta_t = t_1 - t_2
+    delta_t = (t_1 - t_2).to_sec()
+    
+    # delta_t is < 0 if rosbag file repeats,
+    # workaround: use values of last time, does not work optimally though
+    if delta_t < 0:
+        (_,_,_,t_3) = gps[-3]
+        delta_t = (t_2 - t_3).to_sec()
 
     delta_x = v * cos(theta_1) * delta_t
     delta_y = v * sin(theta_1) * delta_t
     delta_theta = theta_1 - theta_2
 
-    print v, delta_x , delta_y
+    print "v = ", v
 
     x_tp = x_tp1 + delta_x
     y_tp = y_tp1 + delta_y
@@ -90,17 +86,23 @@ def gps_callback(data):
     x = data.pose.pose.position.x
     y = data.pose.pose.position.y
     yaw = quaternion_to_yaw(data.pose.pose.orientation)
-    t = time.time()
+    t = data.header.stamp
     gps.append((x,y,yaw ,t))
 
     predict()
     _filter()
 
 def odom_callback(data):
+    global forward
     x = data.pose.pose.position.x
     y = data.pose.pose.position.y
     yaw = quaternion_to_yaw(data.pose.pose.orientation)
-    t = time.time()
+    t = data.header.stamp
+    forward = data.twist.twist.linear.x
+    if forward < 0:
+        forward = -1
+    else:
+        forward = 1
     odoms.append((x,y,yaw,t))
 
 
@@ -136,8 +138,8 @@ def _filter():
 
     #republish all odoms to have the same time space:
     pub_update.publish(create_odom_obj(updated_position_x,updated_position_y,updated_position_theta))
-    pub_odom.publish(create_odom_obj(odoms[-1][0],odoms[-1][1],odoms[-1][2]))
-    pub_gps.publish(create_odom_obj(gps[-1][0],gps[-1][1],gps[-1][2]))
+    #pub_odom.publish(create_odom_obj(odoms[-1][0],odoms[-1][1],odoms[-1][2]))
+    #pub_gps.publish(create_odom_obj(gps[-1][0],gps[-1][1],gps[-1][2]))
 
 def main():
     global pub_update

@@ -4,9 +4,11 @@ import signal
 import sys
 import numpy as np
 import cv2
+import os
 from std_msgs.msg import Float32MultiArray
 from std_msgs.msg import MultiArrayDimension
 from sensor_msgs.msg import Image
+from sensor_msgs.msg import CompressedImage
 from cv_bridge import CvBridge, CvBridgeError
 from numpy import *
 from math import *
@@ -23,7 +25,6 @@ RL_RED =  np.array((3.55, 3.03))
 RL_BLUE =  np.array((4.18, 1.77))
 RL_PURPLE =  np.array((2.29, 2.4))
 
-first_yaw = -10
 font = cv2.FONT_HERSHEY_SIMPLEX
 
 
@@ -67,7 +68,7 @@ def rigid_transform_3D(A, B):
 
 def pub_imgs(img):
     ros_img = bridge.cv2_to_imgmsg(img)
-    img_pub.publish(ros_img)
+    #img_pub.publish(ros_img)
 
 # this function sets red, green, blue, and purple baloon vars respectively
 def findBaloons((cx,cy),(h,s,v)):
@@ -81,7 +82,7 @@ def findBaloons((cx,cy),(h,s,v)):
     if (h,s,v) == (0,0,0) or s < 115:
         return
 
-    #cv2.putText(res_bgr, str((h,s,v)), (cx,cy), font, 0.25, (255,255,255), 1)
+    cv2.putText(res_bgr, str((h,s,v)), (cx,cy), font, 0.25, (255,255,255), 1)
 
     # set proper var if hue conditions are met
     if h > 170 or h < 10:
@@ -89,10 +90,10 @@ def findBaloons((cx,cy),(h,s,v)):
         print "red = ", red_baloon
         cv2.putText(res_bgr, str((cx,cy)), (cx,cy), font, 0.25, (255,255,255), 1)
         cv2.putText(res_bgr, "red", (cx,cy+5), font, 0.25, (0,0,255), 1)
-    if h > 65 and h < 75:
+    if h > 60 and h < 75:
         green_baloon = (cx,cy)
         print "green = ", green_baloon
-        cv2.putText(res_bgr, str((cx,cy)), (cx,cy), font, 0.25, (255,255,255), 1)
+        #cv2.putText(res_bgr, str((cx,cy)), (cx,cy), font, 0.25, (255,255,255), 1)
         cv2.putText(res_bgr, "green", (cx,cy+5), font, 0.25, (0,255,0), 1)
     if h > 115 and h < 125:
         blue_baloon = (cx,cy)
@@ -112,7 +113,6 @@ def yaw_to_quaternion(yaw):
 
 def handle_new_image(img_bgr):
     global res_bgr
-    global first_yaw
 
     # convert bgr image to YUV color space to get a mask
     img_yuv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2YUV)
@@ -145,12 +145,7 @@ def handle_new_image(img_bgr):
     R, t, scale = rigid_transform_3D(np.array(img_coords),np.array(rl_coords))
 
     # yaw is atan(sin/cos) for 360 degrees
-    yaw = math.atan2(R[1][0], R[0][0])
-    if first_yaw == -10:
-        first_yaw = yaw
-    # subtract first yaw to get an accurate idea of where is forward
-    yaw -= first_yaw
-    # some border cases
+    yaw = math.atan2(R[1][0], R[0][0]) - math.pi / 2
     if yaw > math.pi:
         yaw -= 2* math.pi
     elif yaw < -math.pi:
@@ -184,7 +179,7 @@ def publ_odom(rl_loc, yaw):
 
 #callback function
 def camCallback(data):
-    cv_img = bridge.imgmsg_to_cv2(data, "bgr8")
+    cv_img = bridge.compressed_imgmsg_to_cv2(data, "bgr8")
     handle_new_image(cv_img)
 
 def init():
@@ -194,13 +189,15 @@ def init():
 
     rospy.init_node('foobar', anonymous=True)
     bridge = CvBridge()
-    rospy.Subscriber("/usb_cam/image_rect_color", Image, camCallback, queue_size=1)
+    rospy.Subscriber("/usb_cam/image_rect_color/compressed", CompressedImage, camCallback, queue_size=1)
     odom_pub = rospy.Publisher('/my_odom', Odometry)
     img_pub = rospy.Publisher("/mask/yuv",Image,queue_size=1)
 
 
 if __name__ == '__main__':
     try:
+        shell_script = "sshpass -p 'elfmeter' ssh root@192.168.43.104 'v4l2-ctl --device=/dev/usb_cam --set-ctrl exposure_auto=1; v4l2-ctl --device=/dev/usb_cam --set-ctrl exposure_absolute=3'"
+        os.system(shell_script)
         init()
         print "init"
         rospy.spin()
