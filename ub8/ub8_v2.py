@@ -8,41 +8,50 @@ from geometry_msgs.msg import Point, Quaternion, Pose
 import matplotlib
 import matplotlib.pyplot as plt
 
+import time
+
 gps = []
 odoms = []
 predicts = []
 updates = []
 
-
+#def quaternion_to_yaw2(q):
+    #siny = +2.0 * (q.w * q.z + q.x * q.y)
+	#cosy = +1.0 - 2.0 * (q.y * q.y + q.z * q.z)
+	#yaw = atan2(siny, cosy);
 
 def quaternion_to_yaw(q):
-    return acos(q.w * 2 * sin(q.z))
+    return acos(q.w) * 2 * np.sign(q.z)
 
 def yaw_to_quaternion(yaw):
     return Quaternion(0,0,sin(yaw / 2) , cos(yaw / 2))
 
 def calc_velocity():
     #TODO Beim rueckwerts fahren, neg geschwindigkeit
-    (x1, y1, _, t1) = odoms[-1]
-    (x2, y2, _, t2) = odoms[-2]
+    (x1, y1, _, t1) = odoms[-1] #
+    (x2, y2, _, t2) = odoms[-2] #
     d = dist(x1,y1,x2,y2)
-    return d / float(t2-t1)
+    return d / float(t1-t2)
+
+
 
 def predict():
-    if len(odoms) < 2:
+    if len(gps) < 2:
         return
     if len(predicts) < 1:
-        predicts.append(odoms[-1][0:3])
+        predicts.append(gps[-1][0:3])
     (x_tp1, y_tp1, theta_tp1) = predicts[-1]
     v = calc_velocity()
 
-    (_,_,theta_1,t_1) = odoms[-1]
-    (_,_,theta_2,t_2) = odoms[-2]
+    (_,_,theta_1,t_1) = gps[-1]
+    (_,_,theta_2,t_2) = gps[-2]
     delta_t = t_1 - t_2
 
     delta_x = v * cos(theta_1) * delta_t
     delta_y = v * sin(theta_1) * delta_t
     delta_theta = theta_1 - theta_2
+
+    print v, delta_x , delta_y
 
     x_tp = x_tp1 + delta_x
     y_tp = y_tp1 + delta_y
@@ -58,18 +67,19 @@ def gps_callback(data):
     x = data.pose.pose.position.x
     y = data.pose.pose.position.y
     yaw = quaternion_to_yaw(data.pose.pose.orientation)
-    t = rospy.Time.now().nsecs
+    t = time.time()
     gps.append((x,y,yaw ,t))
+
+    predict()
+    _filter()
 
 def odom_callback(data):
     x = data.pose.pose.position.x
     y = data.pose.pose.position.y
     yaw = quaternion_to_yaw(data.pose.pose.orientation)
-    t = rospy.Time.now().nsecs
+    t = time.time()
     odoms.append((x,y,yaw,t))
 
-    predict()
-    _filter()
 
 def create_odom_obj(x,y,yaw):
     msg = Odometry()
@@ -85,7 +95,7 @@ def _filter():
 
     if len(gps) < 1 or len(predicts) < 1:
         return
-    k = 0.5
+    k = 0
     (gps_x, gps_y, gps_theta,_) = gps[-1]
     (pred_x, pred_y, pred_theta) = predicts[-1]
 
@@ -101,8 +111,9 @@ def _filter():
     print "pred" , predicts[-1]
     print "==================================="
 
+    #republish all odoms to have the same time space:
     pub_update.publish(create_odom_obj(updated_position_x,updated_position_y,updated_position_theta))
-    pub_odom.publish(create_odom_obj(odoms[-1][0],-odoms[-1][1],odoms[-1][2]))
+    pub_odom.publish(create_odom_obj(odoms[-1][0],odoms[-1][1],odoms[-1][2]))
     pub_gps.publish(create_odom_obj(gps[-1][0],gps[-1][1],gps[-1][2]))
 
 def main():
