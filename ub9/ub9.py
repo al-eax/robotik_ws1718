@@ -74,12 +74,12 @@ def odom_callback(data):
     for i in range(len(pose_array)):
         # adding some deviation to x and y
         
-        current_yaw = quaternion_to_yaw(pose_array[i].orientation) + random.uniform(0.95 * delta_yaw, 1.05 * delta_yaw)
+        current_yaw = quaternion_to_yaw(pose_array[i].orientation) + random.uniform(0.99 * delta_yaw, 1.01 * delta_yaw)
         yaw_vector = np.array((cos(current_yaw), sin(current_yaw)))
         
         vector_length = math.sqrt(delta_x ** 2 + delta_y ** 2)
         # add noise to vector
-        vector_length = random.uniform(0.95 * vector_length, 1.05 * vector_length)
+        vector_length = random.uniform(0.99 * vector_length, 1.01 * vector_length)
         
         yaw_vector = yaw_vector * vector_length
         
