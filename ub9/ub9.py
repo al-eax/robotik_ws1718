@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 import rospy
+from cv_bridge import CvBridge
+from sensor_msgs.msg import CompressedImage
+from balloon_detector import BalloonDetector
 import numpy as np
+import numpy.linalg as la
 import math
 import time
 from math import sqrt, cos, sin,asin, acos, atan2
@@ -16,10 +20,11 @@ from geometry_msgs.msg import PoseArray, Point, Quaternion, Pose
 arena_x = 10.0/2.0
 arena_y = 10.0/2.0
 
-balloons = [('purple',2.255, 2.425),
-            ('red',3.515, 3.04),
-            ('blue',4.14, 1.79),
-            ('green',2.265, 1.165)]
+
+balloons = {"purple": (2.255, 2.425),
+            "red": (3.515, 3.04),
+            "blue": (4.14, 1.79),
+            "green": (2.265, 1.165)}
 
 final_weights = []
 
@@ -34,6 +39,21 @@ def angle(x,y):
 
 def dist(x1,y1,x2,y2):
     return sqrt((x1-x2)**2 + (y1-y2)**2)
+
+def norm_rad(yaw):
+    if yaw > math.pi:
+        return yaw - 2 * math.pi
+    elif yaw < -math.pi:
+        return yaw + 2 * math.pi
+    else:
+        return yaw
+
+# https://newtonexcelbach.com/2014/03/01/the-angle-between-two-vectors-python-version/
+def py_ang(v1, v2):
+    """ Returns the angle in radians between vectors 'v1' and 'v2'    """
+    cosang = np.dot(v1, v2)
+    sinang = la.norm(np.cross(v1, v2))
+    return np.arctan2(sinang, cosang)
 
 
 def create_ros_pose_array_object():
@@ -58,28 +78,56 @@ def initialize_pose_array():
 
 
 
-def calc_weight(car_pose,ptcl):
-    (p_x,p_y,p_yaw_deg) = ptcl
-    (c_x,c_y,c_yaw_deg) = car_pose
+def calc_weight(ptcl, bln_screen_array):
+    (p_x,p_y,p_yaw) = ptcl
 
     final_weight = 1
-    std = 50
+    std = 10
+
+    (car_x, car_y) = (640 / 2, 480 / 2)
 
     #mit yaw
-    for (_, bln_x, bln_y) in balloons:
-        rel_car_x = bln_x - c_y
-        rel_car_y = bln_y - c_y
+    for color, (bln_screen_x, bln_screen_y) in bln_screen_array:
+        
+        (bln_world_x, bln_world_y) = balloons[color]
+        
+        rel_car_x = bln_screen_x - car_x
+        rel_car_y = bln_screen_y - car_y
+        
         car_angle = angle(rel_car_x,rel_car_y)
 
-        rel_ptcl_x = bln_x - p_x
-        rel_ptcl_y = bln_y - p_y
-        ptcl_angle = angle(rel_ptcl_x,rel_ptcl_y)
 
-        car_angle_deg = car_angle - c_yaw_deg
-        ptcl_angle_deg = ptcl_angle - p_yaw_deg
+        rel_ptcl_x = bln_world_x - p_x
+        rel_ptcl_y = bln_world_y - p_y
+        ptcl_arr = np.array((rel_ptcl_x, rel_ptcl_y))
+        ptcl_yaw_vec = np.array((cos(p_yaw),sin(p_yaw)))
+        
+        ptcl_angle = py_ang(ptcl_arr, ptcl_yaw_vec)
+
+        
+        w = math.exp( -((car_angle - ptcl_angle)**2 / std))
 
 
-        w = math.exp( -((car_angle_deg - ptcl_angle_deg)**2 / std))
+
+
+        #car_angle = car_angle - c_yaw
+        #ptcl_angle = ptcl_angle - p_yaw
+        
+        #car_arr = np.array((rel_car_x, rel_car_y))
+        #ptcl_arr = np.array((rel_ptcl_x, rel_ptcl_y))
+        #car_yaw_arr = np.array((cos(c_yaw), sin(c_yaw)))
+        #ptcl_yaw_arr = np.array((cos(p_yaw), sin(p_yaw)))
+
+        #car_angle_v2 = py_ang(car_arr, car_yaw_arr)
+        #ptcl_angle_v2 = py_ang(ptcl_arr, ptcl_yaw_arr)
+
+        #w2 = math.exp( -((car_angle_v2 - ptcl_angle_v2)**2 / std))
+        
+        #print "car_angle = ", car_angle, "; car_angle_v2 = ", car_angle_v2
+        #print "ptcl_angle = ", ptcl_angle, "; ptcl_angle_v2 = ", ptcl_angle_v2
+        #print "w = ", w, "; w2 = ", w2
+        #print "-------------------------------------------------------"
+
         final_weight = w * final_weight
 
     return final_weight
@@ -92,25 +140,25 @@ def norm_weights(weights):
 
 
 def resample(weights):
+    global pose_array
+    
     cell_size = 1.0 / len(weights)
     cell_center = cell_size / 2.0
 
     hold = []
 
-    weight_index = -1
+    weight_index = 0
     weights_sum = 0
 
     for i in np.arange(cell_center, 1, cell_size):
-        while weights_sum < i:
+        while weights_sum + weights[weight_index] < i:
             weights_sum += weights[weight_index]
             weight_index += 1
         hold.append(weight_index)
-    print hold
-    new_pose_array = []
+        
     for i in range(len(hold)):
-
-        pose_array[i] = pose_array[hold[i]]
-
+        pose_obj = get_pose(pose_array[hold[i]].position.x, pose_array[hold[i]].position.y, quaternion_to_yaw(pose_array[hold[i]].orientation))
+        pose_array[i] = pose_obj
 
 
 def odom_callback(data):
@@ -137,42 +185,63 @@ def odom_callback(data):
     weights = []
     for i in range(len(pose_array)):
         # adding some deviation to x and y
-        current_yaw = quaternion_to_yaw(pose_array[i].orientation) + random.uniform(0.50 * delta_yaw, 1.50 * delta_yaw)
+        current_yaw = quaternion_to_yaw(pose_array[i].orientation) - delta_yaw
+        current_yaw = norm_rad(random.uniform(0.9 * current_yaw, 1.1 * current_yaw))
 
         yaw_vector = np.array((cos(current_yaw), sin(current_yaw)))
 
         vector_length = math.sqrt(delta_x ** 2 + delta_y ** 2)
         # add noise to vector
 
-        vector_length = random.uniform(0.99 * vector_length, 1.01 * vector_length)
+        vector_length = random.uniform(0.75 * vector_length, 1.25 * vector_length)
 
         yaw_vector = yaw_vector * vector_length
 
         pose_array[i].position.x += yaw_vector[0]
         pose_array[i].position.y += yaw_vector[1]
         pose_array[i].orientation = yaw_to_quaternion(current_yaw)
-        weight = calc_weight( (x,y,yaw) , (pose_array[i].position.x,pose_array[i].position.y,current_yaw) )
-        weights.append(weight)
-
-    final_weights = norm_weights(weights)
-    resample(weights)
-
 
     old_x = x
     old_y = y
     old_yaw = yaw
     pub_pos.publish(create_ros_pose_array_object())
 
+def callback(data):
+    img = bridge.compressed_imgmsg_to_cv2(data, "bgr8")
 
+    detector.calculate_best_position(img)
+    bln_array = detector.get_balloon_positions()
+    bln_screen_coords = []
+    for balloon in bln_array:
+        bln_screen_coords.append((balloon[0][0], balloon[1]))
+    #print bln_screen_coords
+    #print len(bln_screen_coords)
+    #print "-------------------------------------------------------------"
+    
+    weights = []
+    for i in range(len(pose_array)):
+        weight = calc_weight((pose_array[i].position.x,pose_array[i].position.y, quaternion_to_yaw(pose_array[i].orientation)), bln_screen_coords)
+        weights.append(weight)
+    final_weights = norm_weights(weights)
+    resample(final_weights)
+    
 
 def main():
     global pub_pos
+    global bridge
+    global detector
     rospy.init_node('my_little_nodey', anonymous=True)
 
     pub_pos = rospy.Publisher('/mcposearray', PoseArray, queue_size=1)
     initialize_pose_array()
 
+    bridge = CvBridge()
+
     rospy.Subscriber("/odom", Odometry, odom_callback, queue_size=1)
+    
+    detector = BalloonDetector()
+    
+    rospy.Subscriber("/usb_cam/image_raw/compressed", CompressedImage, callback, queue_size=1)
 
 
     #rate = rospy.Rate(10.0)
