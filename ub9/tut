@@ -1,0 +1,32 @@
+
+3.
+
+    for every lightbulb: e^(-(seenAngle - expectedAngle)^2/standardDeviation^2)
+    then multiply everything, get the weight of the particle and normalize all particle weights
+    ^ this is written in the task itself smh
+    
+    
+    arccos(np.dot(A,B)) <- angle between vectors
+    
+    seen angle - as seen by the car
+    expected angle - as expected from the particle
+    
+4.
+
+    particles weights:
+    0.1
+    0.02
+    0.2
+    resulting ranges:
+    0-0.1
+    0.1-0.12
+    0.12-0.32
+    
+    in an array of 100 particles, so we have an array with cell size of 1/100=0.01
+    particle #2 would probably be lost like this (?) because we only put particles 
+    at the center of each cell into it
+    in cell #0 would be the particle at position 0.005, which would be the first one in this example
+    
+    atan2(sum(sin()),sum(cos())) <- build the average of the particle angles
+    
+    
