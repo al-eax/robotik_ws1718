@@ -21,7 +21,7 @@ balloons = [('purple',2.255, 2.425),
             ('blue',4.14, 1.79),
             ('green',2.265, 1.165)]
 
-
+final_weights = []
 
 def quaternion_to_yaw(q):
     return acos(q.w) * 2 * np.sign(q.z)
@@ -57,7 +57,8 @@ def initialize_pose_array():
         pose_array.append(get_pose(x,y,yaw))
 
 
-def calc_weight(ptcl, car_pose):
+
+def calc_weight(car_pose,ptcl):
     (p_x,p_y,p_yaw_deg) = ptcl
     (c_x,c_y,c_yaw_deg) = car_pose
 
@@ -65,7 +66,7 @@ def calc_weight(ptcl, car_pose):
     std = 50
 
     #mit yaw
-    for (bln_color, bln_x, bln_y) in [ balloons[0] ]:
+    for (_, bln_x, bln_y) in balloons:
         rel_car_x = bln_x - c_y
         rel_car_y = bln_y - c_y
         car_angle = angle(rel_car_x,rel_car_y)
@@ -82,6 +83,12 @@ def calc_weight(ptcl, car_pose):
         final_weight = w * final_weight
 
     return final_weight
+
+def norm_weights(weights):
+    s = np.sum(weights)
+    for i in range(len(weights)):
+        weights[i] = weights[i] / s
+    return weights
 
 def odom_callback(data):
     global old_x
@@ -104,11 +111,10 @@ def odom_callback(data):
         old_yaw = yaw
         return
 
+    weights = []
     for i in range(len(pose_array)):
         # adding some deviation to x and y
-
-        
-        current_yaw = quaternion_to_yaw(pose_array[i].orientation) + random.uniform(0.99 * delta_yaw, 1.01 * delta_yaw)
+        current_yaw = quaternion_to_yaw(pose_array[i].orientation) + random.uniform(0.50 * delta_yaw, 1.50 * delta_yaw)
 
         yaw_vector = np.array((cos(current_yaw), sin(current_yaw)))
 
@@ -123,7 +129,10 @@ def odom_callback(data):
         pose_array[i].position.y += yaw_vector[1]
         pose_array[i].orientation = yaw_to_quaternion(current_yaw)
         weight = calc_weight( (x,y,yaw) , (pose_array[i].position.x,pose_array[i].position.y,current_yaw) )
-        print "weight",weight
+        weights.append(weight)
+
+    final_weights = norm_weights(weights)
+
     old_x = x
     old_y = y
     old_yaw = yaw
