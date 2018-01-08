@@ -90,6 +90,29 @@ def norm_weights(weights):
         weights[i] = weights[i] / s
     return weights
 
+
+def resample(weights):
+    cell_size = 1.0 / len(weights)
+    cell_center = cell_size / 2.0
+
+    hold = []
+
+    weight_index = -1
+    weights_sum = 0
+
+    for i in np.arange(cell_center, 1, cell_size):
+        while weights_sum < i:
+            weights_sum += weights[weight_index]
+            weight_index += 1
+        hold.append(weight_index)
+    print hold
+    new_pose_array = []
+    for i in range(len(hold)):
+
+        pose_array[i] = pose_array[hold[i]]
+
+
+
 def odom_callback(data):
     global old_x
     global old_y
@@ -132,6 +155,8 @@ def odom_callback(data):
         weights.append(weight)
 
     final_weights = norm_weights(weights)
+    resample(weights)
+
 
     old_x = x
     old_y = y
