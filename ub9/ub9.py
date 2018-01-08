@@ -8,7 +8,6 @@ import random
 from nav_msgs.msg import Odometry
 import geometry_msgs
 from geometry_msgs.msg import PoseArray, Point, Quaternion, Pose
-import tf2_ros
 
 
 # size of arena: 10x10
@@ -54,6 +53,7 @@ def initialize_pose_array():
 def odom_callback(data):
     global old_x
     global old_y
+    global old_yaw
     x = data.pose.pose.position.x
     y = data.pose.pose.position.y
     yaw = quaternion_to_yaw(data.pose.pose.orientation)
@@ -63,26 +63,33 @@ def odom_callback(data):
     try:
         delta_x = x - old_x
         delta_y = y - old_y
+        delta_yaw = yaw - old_yaw
     # NameError occurs if old_x and old_y are not defined yet
     except NameError:
         old_x = x
         old_y = y
+        old_yaw = yaw
         return
     
     for i in range(len(pose_array)):
         # adding some deviation to x and y
-        deviation_x = random.uniform(-delta_x*0.05,delta_x*0.05)
-        deviation_y = random.uniform(-delta_y*0.05,delta_y*0.05)
-        # calculate the angle of the new vector and add that to the current yaw
-        deviation_yaw = angle(deviation_x, deviation_y)
-        new_yaw = 0.1 * deviation_yaw + yaw
         
-        pose_array[i].position.x += delta_x + deviation_x
-        pose_array[i].position.y += delta_y + deviation_y
-        pose_array[i].orientation = yaw_to_quaternion(new_yaw)
+        current_yaw = quaternion_to_yaw(pose_array[i].orientation) + random.uniform(0.95 * delta_yaw, 1.05 * delta_yaw)
+        yaw_vector = np.array((cos(current_yaw), sin(current_yaw)))
+        
+        vector_length = math.sqrt(delta_x ** 2 + delta_y ** 2)
+        # add noise to vector
+        vector_length = random.uniform(0.95 * vector_length, 1.05 * vector_length)
+        
+        yaw_vector = yaw_vector * vector_length
+        
+        pose_array[i].position.x += yaw_vector[0]
+        pose_array[i].position.y += yaw_vector[1]
+        pose_array[i].orientation = yaw_to_quaternion(current_yaw)
 
     old_x = x
     old_y = y
+    old_yaw = yaw
     pub_pos.publish(create_ros_pose_array_object())
     
     
