@@ -16,7 +16,8 @@ import tf2_ros
 # so it is centered on (0,0)
 arena_x = 10.0/2.0
 arena_y = 10.0/2.0
-PARTICLE_NUM = 1
+PARTICLE_NUM = 3
+
 
 balloons = [('purple',2.255, 2.425),
             ('red',3.515, 3.04),
@@ -75,15 +76,24 @@ def norm_deg(a):
         a += 360
     return a % 360
 
+def norm_weights(weights):
+    s = 0
+    for w in weights:
+        s += w
+    for i in range(len(weights)):
+        weights[i] = weights[i] / s
+    return weights
+
 def calc_weight(ptcl, car_pose):
     #TODO yaw mit einberechnen.
     # nicht den winkel zwischen ballon und car berechnen, sondern den winkel zwischen ballon und yaw
+    # ziehe Auto in mitelpunkt, berechne Winkel zu allen baloons,
     (p_x,p_y,p_yaw_deg) = ptcl
     (c_x,c_y,c_yaw_deg) = car_pose
 
     final_weight = 1
-    std = 100
-    """
+    std = 50
+
     #mit yaw
     for (bln_color, bln_x, bln_y) in [ balloons[0] ]:
         rel_car_x = bln_x - c_y
@@ -97,12 +107,10 @@ def calc_weight(ptcl, car_pose):
         car_angle_deg = norm_deg(rad_to_deg(car_angle) - c_yaw_deg)
         ptcl_angle_deg = norm_deg(rad_to_deg(ptcl_angle) - p_yaw_deg)
 
-        print "angles " , norm_deg(rad_to_deg(car_angle)) , "   " , norm_deg(rad_to_deg(ptcl_angle))
+        #print "angles " , norm_deg(rad_to_deg(car_angle)) , "   " , norm_deg(rad_to_deg(ptcl_angle))
 
         w = math.exp( (car_angle_deg - ptcl_angle_deg)**2 / std)
-        weight = w * weight
-    print "weight" , weight
-    return weight
+        final_weight = w * final_weight
     """
     #ohne yaw
     for (bln_color, bln_x, bln_y) in balloons:
@@ -110,7 +118,8 @@ def calc_weight(ptcl, car_pose):
         ptcl_angle = angle_between_vecs( [p_x,c_y] , [bln_x, bln_y])
         weight = math.exp( (car_angle - ptcl_angle)**2 / std)
         final_weight = final_weight * weight
-    print "weight" , final_weight
+    """
+    #print "weight" , final_weight
     return final_weight
     #print "angles: ", rad_to_deg(car_angle) , " : " , rad_to_deg(ptcl_angle)
 
@@ -122,6 +131,7 @@ def odom_callback(data):
     x = data.pose.pose.position.x
     y = data.pose.pose.position.y
     yaw_deg = rad_to_deg(quaternion_to_yaw(data.pose.pose.orientation))
+
 
     # to move each particle by the motion vector of the car,
     # every particle must have the same yaw as the car, no?
@@ -137,28 +147,45 @@ def odom_callback(data):
         old_yaw_deg = yaw_deg
         return
 
+    d = dist(x,y,old_x,old_y)
+
+    weights = []
+
     for i in range(len(pose_array)):
         paricle_old_x = pose_array[i].position.x
         paricle_old_y = pose_array[i].position.y
         paricle_old_yaw_deg = rad_to_deg(quaternion_to_yaw(pose_array[i].orientation))
 
-        paricle_new_x = paricle_old_x + delta_x
-        paricle_new_y = paricle_old_y + delta_y
-        paricle_new_yaw_deg = norm_deg(paricle_old_yaw_deg + delta_yaw_deg)
+        paricle_new_yaw_deg = paricle_old_yaw_deg + delta_yaw_deg
+
+        V_x = cos(deg_to_rad(paricle_new_yaw_deg))
+        V_y = sin(deg_to_rad(paricle_new_yaw_deg))
+        
+        V_x *= d
+        V_y *= d
+        print V_x , V_y
+        paricle_new_x = paricle_old_x + V_x
+        paricle_new_y = paricle_old_y + V_y
 
         pose_array[i].position.x = paricle_new_x
         pose_array[i].position.y = paricle_new_y
         pose_array[i].orientation = yaw_to_quaternion(deg_to_rad(paricle_new_yaw_deg))
 
-        calc_weight( (paricle_new_x,paricle_new_y,paricle_new_yaw_deg) , (x,y,yaw_deg))
-
+        weight = calc_weight( (paricle_new_x,paricle_new_y,paricle_new_yaw_deg) , (x,y,yaw_deg))
+        weights.append(weight)
 
         #print "paricle_new_yaw_deg" ,paricle_new_yaw_deg
-
     old_x = x
     old_y = y
     old_yaw_deg = yaw_deg
+
+    s = 0
+    for w in weights:
+        s += w
+    print "s" , s
+
     pub_pos.publish(create_ros_pose_array_object())
+
 
 
 def main():
