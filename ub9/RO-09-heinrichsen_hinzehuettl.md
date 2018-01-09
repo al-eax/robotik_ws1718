@@ -39,13 +39,15 @@ Here two pictures of the distribution between a few iterations:
 
 ## 3) Calculate weights for each particle - with Sensory Data
 
-We used a low standard deviation of 0.1 which leads to high weight diffs and hard resamplings.
+We used a low standard deviation of 0.1 which leads to high weight diffs and hard resamplings into a few cells.
 
 We used the `BalloonDetector` from KVV solution to localize the balloons and calculate the angles. Have a look at our `calc_weight` function.
 
+
 ## 4) Resample, Generate a new Particle Set
 
-Resampling steps with a high standard deviation of 1000 prasticles:
+Resampling steps with a high standard deviation of 1000 particles:
+
 ![](d1.png)
 ![](d2.png)
 ![](d3.png)

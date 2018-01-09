@@ -173,6 +173,7 @@ def resample(weights):
     cell_size = 1.0 / len(weights)
     cell_center = cell_size / 2.0
 
+    # list of particle indices which we hold after resampling
     hold = []
 
     weight_index = 0
@@ -232,7 +233,7 @@ def odom_callback(data):
 
         # add some noise to vector
         vector_length = random.uniform(0.75 * vector_length, 1.25 * vector_length)
-
+        # move particle
         yaw_vector = yaw_vector * vector_length
 
         pose_array[i].position.x += yaw_vector[0]
@@ -242,15 +243,17 @@ def odom_callback(data):
     old_x = x
     old_y = y
     old_yaw = yaw
-
+    # publish particle cloud
     pub_pos.publish(create_ros_pose_array_object())
 
+    #get location via grid
     (gx,gy,gyaw) = create_grid()
     odom = create_odom_obj(gx,gy,gyaw)
     odom_pub.publish(odom)
 
-
+# usb cam callback
 def callback(data):
+    #detect balloons
     img = bridge.compressed_imgmsg_to_cv2(data, "bgr8")
 
     detector.calculate_best_position(img)
@@ -258,14 +261,15 @@ def callback(data):
     bln_screen_coords = []
     for balloon in bln_array:
         bln_screen_coords.append((balloon[0][0], balloon[1]))
-
+    # update weights
     weights = []
     for i in range(len(pose_array)):
         weight = calc_weight((pose_array[i].position.x, pose_array[i].position.y, quaternion_to_yaw(pose_array[i].orientation)), bln_screen_coords)
         weights.append(weight)
     final_weights = norm_weights(weights)
+    #resample particles
     resample(final_weights)
-    create_grid()
+
 
 
 def main():
@@ -274,6 +278,7 @@ def main():
     global detector
     global odom_pub
     global odom_now_pub
+
     odom_pub = rospy.Publisher("/mcpf_gps", Odometry, queue_size=200)
     odom_now_pub = rospy.Publisher("/odom_now", Odometry, queue_size=200)
     rospy.init_node('my_little_nodey', anonymous=True)
