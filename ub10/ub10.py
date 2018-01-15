@@ -14,7 +14,8 @@ import geometry_msgs
 from geometry_msgs.msg import PoseArray, Point, Quaternion, Pose
 from std_msgs.msg import Int16
 import os
-
+from std_msgs.msg import Header
+from geometry_msgs.msg import Pose, Point, Quaternion, PoseWithCovariance
 
 resolution = 10
 map_size_x=600 #cm
@@ -52,7 +53,7 @@ def py_ang(v1, v2):
 def callback(data):
     #detect balloons
     img = bridge.compressed_imgmsg_to_cv2(data, "bgr8")
-
+    pub_odom(img)
     x, y = detector.calculate_best_position(img)
     yaw = detector.calculate_angle()
 
@@ -78,9 +79,9 @@ def callback(data):
     steering=Kp*np.arctan(f_y/(2.5*f_x))
 
     if (f_x > 0):
-        speed = -200
+        speed = -350
     else:
-        speed = 200
+        speed = 350
         if (f_y > 0):
             steering = -np.pi/2
         if (f_y < 0):
@@ -94,36 +95,62 @@ def callback(data):
 
 
     steering = 90 + steering * (180/np.pi)
-    
+
     print "steering: ", steering
     print "speed: ", speed
-    
+    #speed = 0
     pub_steering.publish(Int16(steering))
     pub_speed.publish(Int16(speed))
-    
 
 
+def pub_odom(img):
 
+    pose_covar = PoseWithCovariance(Pose(Point(0, 0, 0), Quaternion()), None)
+    odom = Odometry(Header(frame_id='odom'), 'base_link', pose_covar, None)
+    xy = detector.calculate_best_position(img)
+    for bln in detector.balloon_positions:
+        print bln
+
+    # Don't publish a pose if location can't be reliably determined
+    if xy is None:
+        print("No location found")
+        return
+
+    yaw_angle = detector.calculate_angle()
+
+    # publish odometry message
+    header = odom.header
+    #header.seq = data.header.seq
+    #header.stamp = data.header.stamp
+
+    pose = odom.pose.pose
+    pos = pose.position
+    pos.x, pos.y = xy
+
+    quaternion = pose.orientation
+    quaternion.z, quaternion.w = math.sin(yaw_angle / 2), math.cos(yaw_angle / 2)
+    odom_pub.publish(odom)
 def main():
     global bridge
     global detector
     global pub_steering
     global pub_speed
     global force_map
-    
-    shell_script = "sshpass -p 'elfmeter' ssh root@192.168.43.102 'v4l2-ctl --device=/dev/usb_cam --set-ctrl exposure_auto=1; v4l2-ctl --device=/dev/usb_cam --set-ctrl exposure_absolute=3'"
+    global odom_pub
+
+    shell_script = "sshpass -p 'elfmeter' ssh root@192.168.43.102 'v4l2-ctl --device=/dev/usb_cam --set-ctrl exposure_auto=1; v4l2-ctl --device=/dev/usb_cam --set-ctrl exposure_absolute=5'"
     os.system(shell_script)
-    
-    force_map = np.load("matrixDynamic_lane1.npy")
+
+    force_map = np.load("matrixDynamic_lane2.npy")
 
     rospy.init_node('my_tenth_node', anonymous=True)
     bridge = CvBridge()
 
     detector = BalloonDetector()
-    
+
     pub_steering = rospy.Publisher("/manual_control/steering", Int16, queue_size=1)
     pub_speed = rospy.Publisher("/manual_control/speed", Int16, queue_size=100, latch=True)
-    
+    odom_pub = rospy.Publisher("/assignment6/odom", Odometry, queue_size=200)
     rospy.Subscriber("/usb_cam/image_raw/compressed", CompressedImage, callback, queue_size=1)
     rospy.spin()
 

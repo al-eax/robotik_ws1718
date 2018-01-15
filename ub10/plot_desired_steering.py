@@ -27,7 +27,7 @@ def main(map_file):
     fig = plt.figure(figsize=(12, 10), facecolor='w')
     plt.plot(x, y, ':o', markersize=2)
     global matrix
-    matrix = np.load('matrixDynamic.npy')
+    matrix = np.load('matrixDynamic_lane2.npy')
 
     plt.gca().set_aspect(1, 'datalim')  # keep circles as circles
     plt.tight_layout()
@@ -104,9 +104,9 @@ def main(map_file):
         print ""
 
     #plot for three diffrent locations:
-    show_nearest((0, 0, deg_to_rad(0)))
-    show_nearest((1, 1, deg_to_rad(100)))
-    show_nearest((3, 3, deg_to_rad(30)))
+    show_nearest((3.0824503810121322, 3.4432021842017404, -3.428323751982624))
+    show_nearest((2.4863752403013173, 2.5317883165130555, -0.71667885419037469))
+    show_nearest((3.9662325573582558, 0.6006136280417349, -2.8916016620543497))
 
 
     plt.show()

@@ -10,34 +10,30 @@
 __Repo:__ [https://github.com/al-eax/robotik_ws1718](https://github.com/al-eax/robotik_ws1718)
 
 
-## 1 - Load the `matrixDynamic` and find the steering angle
+## 1 - Load the _matrixDynamic_ and find the steering angle
 
-### a)
+### a,b)
 
-```
-alex@alex-ThinkPad-L450 ~/repos/robotik_ws1718/ub10 (master *) $ python plot_desired_steering.py
+We placed our car on three diffrent positions on the field.
+We calculated the steering angle and let the car drive a circle on `matrixDynamic_lane1.npy`
 
-x,y:  (0, 0)
-YAW:  0.0
-steering:  24.1824275851
-Fx:  1.10000002384
-Fy:  0.465999990702
+* __Position 1__:
+`x,y,yaw = (3.0824503810121322, 3.4432021842017404, -3.428323751982624)`
+![](ub10_1b.png)
 
+* __Position 2__:
+`x,y,yaw = (2.4863752403013173, 2.5317883165130555, -0.71667885419037469)`
+![](ub10_1b_2.png)
 
-0.3
-x,y:  (1, 1)
-YAW:  100.0
-steering:  -45.0
-Fx:  -0.467783676811
-Fy:  0.0824828833568
+* __Position 3__:
+`x,y,yaw = (3.9662325573582558, 0.6006136280417349, -2.8916016620543497)`
+![](ub10_1b_3.png)
 
+Finnaly we used `plot_desired_steering.py` to plot the circles:
+![](circles_plot.png)
 
-0.3
-x,y:  (3, 3)
-YAW:  30.0
-steering:  -45.0
-Fx:  -0.0867691637115
-Fy:  0.569711428532
-```
+## 2 - Navigation using the force matrix
 
-### b)
+We used the `controller.py` from the repo and used the example solution from kvv for virusl gps. Our car drives the on the lane:
+
+![](a2.png)

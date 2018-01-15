@@ -191,7 +191,7 @@ class BalloonDetector(object):
 
         # mark position with a cross
         for balloon, pos in self.balloon_positions.items():
-            print "ballon pose, ", balloon , pos
+            #print "ballon pose, ", balloon , pos
             draw_cross(img, pos, balloon.name, balloon.hue)
 
         if self.iterations is not None:
