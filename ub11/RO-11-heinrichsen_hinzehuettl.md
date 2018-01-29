@@ -29,21 +29,21 @@ We used this tool for visualization: [http://alexbeutel.com/webgl/voronoi.html](
 
 \(S = 11.18 \)
 
-\(L_2 = \frac{333.45^\circ}{360^\circ} = 11.64\)
+\(L_2 = \frac{333.45^\circ}{360^\circ} * U = 23.28\)
 
-\(LSL = 43.42\)
+\(LSL = 55.12\)
 
 ![](LSL.png)
 
 #### LRL
 
-\(L_1 =  \frac{72.27^\circ}{360^\circ} * U = 2.52\)
+\(L_1 =  \frac{72.27^\circ}{360^\circ} * U = 5.04\)
 
-\(R =  \frac{271.4^\circ}{360^\circ} * U = 9.47\)
+\(R =  \frac{271.4^\circ}{360^\circ} * U = 18.95\)
 
-\(L_2 = \frac{109.14^\circ}{360^\circ} * U = 3.81\)
+\(L_2 = \frac{109.14^\circ}{360^\circ} * U = 7.62\)
 
-\(LRL = 15.8 \)
+\(LRL = 31.61 \)
 
 ![](LRL.png)
 
