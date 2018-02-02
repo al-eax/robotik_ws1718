@@ -19,7 +19,7 @@ __Repo:__ [https://github.com/al-eax/robotik_ws1718](https://github.com/al-eax/r
 |3           | C{10+42}, D{10+35}, __B{30+9}__     | H{0+19}, G{10+1}, E{10+20}, F{20+18}  |
 |4           | C{10+42}, __D{10+35}__ , _A{40+0}_    | H{0+19}, G{10+1}, E{10+20}, F{20+18}, B{30+9}  |
 |5           | __C{10+42}__ , _A{40+0}_, _A{20+0}_   | H{0+19}, G{10+1}, E{10+20}, F{20+18}, B{30+9}, D{10+35} |
-|6           | _A{40+0}_, ___A{20+0}___, _A{20+0}_   | H{0+19}, G{10+1}, E{10+20}, F{20+18}, B{30+9}, D{10+35}, C{10+42} |
+|6           | _A{40+0}_, __A{20+0}__, _A{20+0}_   | H{0+19}, G{10+1}, E{10+20}, F{20+18}, B{30+9}, D{10+35}, C{10+42} |
 
 Shortest way under consideration of alphanumerical values: \(h \rightarrow c \rightarrow a\).
 This heuristic is __not__ optimistic. Some heuristics are higher than the actual path costs.
