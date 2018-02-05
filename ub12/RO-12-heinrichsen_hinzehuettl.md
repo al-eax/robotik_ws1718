@@ -11,7 +11,7 @@ __Repo:__ [https://github.com/al-eax/robotik_ws1718](https://github.com/al-eax/r
 
 ## A* Tree
 
-|     Step   |         Open  {g+h}        |   Close      |
+|     Step   |         Opend  {g+h}        |   Closed      |
 |------------|---------------------------------------------|---------------------- |
 |0           |  __H{0+19}__  |       |
 |1           | __G(10+1)__, E{10+20}, D{10+35}, C{10+42}, | H{0+19}   |
