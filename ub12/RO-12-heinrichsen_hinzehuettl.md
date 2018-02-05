@@ -40,22 +40,24 @@ A non consistent graph doesnt find the optimal path, as you can see.
 \(F_{O} = \frac{3}{d_O^2} = \frac{3}{(x-2)^2 + (y-3)^2} \)
 
 ##### derivation of \(F_G \)
+
 \(F_{xG}'(x,y) = 2x-6\)
 
 \(F_{yG}'(x,y) = 2y - 8\)
 
 ##### derivation of \(F_O \)
+
 \(u = 3; u' = 0\)
 
 \(v = (x-2)^2 + (y-3)^2\)
 
-\(v_x' = 2x-2; v_y' = 2y-8 \)
+\(v_x' = 2x-4; v_y' = 2y-6 \)
 
-\(F_{xO}'(x,y) = \frac{-3*(2x-2)}{ \left( (x-2)^2 + (x-4)^2 \right)^2 }\)
+\(F_{xO}'(x,y) = \frac{-3*(2x-4)}{ \left( (x-2)^2 + (y-3)^2 \right)^2 }\)
 
-\(F_{yO}'(x,y) = \frac{-3*(2y-2)}{ \left( (x-2)^2 + (x-4)^2 \right)^2 }\)
+\(F_{yO}'(x,y) = \frac{-3*(2y-6)}{ \left( (x-2)^2 + (y-3)^2 \right)^2 }\)
 
 ##### force vectors
-\(\vec{F_O} = (F_{xO}'(1,1), F_{yO}'(1,1))^T = (0,0)^T \)
+\(\vec{F_O} = (F_{xO}'(1,1), F_{yO}'(1,1))^T = (\frac{6}{25},\frac{6}{25})^T \)
 
 \(\vec{F_G} = (F_{xG}'(1,1) , F_{yG}'(1,1))^T = (-4,-6)^T \)
