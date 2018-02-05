@@ -61,3 +61,5 @@ A non consistent graph doesnt find the optimal path, as you can see.
 \(\vec{F_O} = (F_{xO}'(1,1), F_{yO}'(1,1))^T = (\frac{6}{25},\frac{6}{25})^T \)
 
 \(\vec{F_G} = (F_{xG}'(1,1) , F_{yG}'(1,1))^T = (-4,-6)^T \)
+
+\(\vec{F} = \vec{F_O} + \vec{F_G} = (-3.76, -5.76)^T \)
