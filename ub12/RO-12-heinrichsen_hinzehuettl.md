@@ -27,7 +27,11 @@ A non consistent graph doesnt find the optimal path, as you can see.
 
 ## 2. Voronoi-Diagrams
 
-[foo](https://books.google.de/books?id=cic8DQAAQBAJ&pg=PA131&lpg=PA131&dq=construct+l1+norm+voronoi&source=bl&ots=O7iYqH6zBz&sig=4aEvQFw1lFsrW4dQi0R5rDOWcAE&hl=de&sa=X&ved=0ahUKEwioyIuEw47ZAhVMZ1AKHVBWAUMQ6AEIOzAC#v=onepage&q=construct%20l1%20norm%20voronoi&f=false)
+##### l1 metric
+![](voronoi_l1.png)
+
+##### l2 metric
+![](voronoi_l2.png)
 
 ## 3. Potential Fields
 
